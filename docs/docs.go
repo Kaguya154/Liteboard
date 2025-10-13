@@ -246,7 +246,7 @@ const docTemplate = `{
         },
         "/api/content_lists": {
             "get": {
-                "description": "Retrieve list of content lists",
+                "description": "Retrieve list of content lists for a project",
                 "consumes": [
                     "application/json"
                 ],
@@ -255,6 +255,15 @@ const docTemplate = `{
                 ],
                 "tags": [
                     "content"
+                ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Project ID",
+                        "name": "projectid",
+                        "in": "query",
+                        "required": true
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -1478,6 +1487,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/internal.ContentItem"
                     }
                 },
+                "project_id": {
+                    "type": "integer"
+                },
                 "title": {
                     "type": "string"
                 },
@@ -1502,6 +1514,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "user_id": {
                     "type": "integer"
                 }
             }
@@ -1532,6 +1547,9 @@ const docTemplate = `{
         "internal.Project": {
             "type": "object",
             "properties": {
+                "creator_id": {
+                    "type": "integer"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -1548,6 +1566,12 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "integer"

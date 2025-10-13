@@ -2,19 +2,27 @@ package api
 
 import (
 	"context"
+	"liteboard/auth"
 	"liteboard/internal"
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/route"
+	"github.com/hertz-contrib/sessions"
 )
+
+// GetIDFromParam 从请求参数中获取ID
+func GetIDFromParam(c *app.RequestContext) (int64, error) {
+	idStr := c.Param("id")
+	return strconv.ParseInt(idStr, 10, 64)
+}
 
 func RegisterProjectRoutes(r *route.RouterGroup) {
 	r.GET("/projects", GetProjects)
 	r.POST("/projects", CreateProject)
-	r.GET("/projects/:id", GetProject)
-	r.PUT("/projects/:id", UpdateProject)
-	r.DELETE("/projects/:id", DeleteProject)
+	r.GET("/projects/:id", auth.PermissionCheckMiddleware("project", "read", GetIDFromParam), GetProject)
+	r.PUT("/projects/:id", auth.PermissionCheckMiddleware("project", "write", GetIDFromParam), UpdateProject)
+	r.DELETE("/projects/:id", auth.PermissionCheckMiddleware("project", "admin", GetIDFromParam), DeleteProject)
 }
 
 // GetProjects @Summary Get all projects
@@ -25,8 +33,18 @@ func RegisterProjectRoutes(r *route.RouterGroup) {
 // @Success 200 {array} internal.Project
 // @Router /api/projects [get]
 func GetProjects(ctx context.Context, c *app.RequestContext) {
-	// TODO: implement list all
-	c.JSON(200, []internal.Project{})
+	sess := sessions.Default(c)
+	userID := sess.Get("user")
+	if userID == nil {
+		c.JSON(401, map[string]string{"error": "not logged in"})
+		return
+	}
+	projects, err := internal.GetProjectsForUser(db, userID.(int64))
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(200, projects)
 }
 
 // CreateProject @Summary Create project
@@ -40,17 +58,48 @@ func GetProjects(ctx context.Context, c *app.RequestContext) {
 // @Failure 500 {object} map[string]string
 // @Router /api/projects [post]
 func CreateProject(ctx context.Context, c *app.RequestContext) {
+	sess := sessions.Default(c)
+	userID := sess.Get("user")
+	if userID == nil {
+		c.JSON(401, map[string]string{"error": "not logged in"})
+		return
+	}
 	var p internal.Project
 	if err := c.BindJSON(&p); err != nil {
 		c.JSON(400, map[string]string{"error": err.Error()})
 		return
 	}
+	p.CreatorID = userID.(int64)
 	id, err := internal.CreateProject(db, &p)
 	if err != nil {
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
 	p.ID = id
+	// Give admin permission to creator
+	dp := internal.DetailPermission{
+		UserID:      p.CreatorID,
+		ContentType: "project",
+		ContentIDs:  []int64{p.ID},
+		Action:      "admin",
+	}
+	_, err = internal.CreateDetailPermission(db, &dp)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	// Also give read permission
+	dpRead := internal.DetailPermission{
+		UserID:      p.CreatorID,
+		ContentType: "project",
+		ContentIDs:  []int64{p.ID},
+		Action:      "read",
+	}
+	_, err = internal.CreateDetailPermission(db, &dpRead)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
 	c.JSON(201, p)
 }
 

@@ -9,6 +9,7 @@ type Project struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	CreatorID   int64  `json:"creator_id"`
 }
 
 type User struct {
@@ -103,10 +104,11 @@ func (ci *ContentItem) UnmarshalJSON(data []byte) error {
 }
 
 type ContentList struct {
-	ID    int64         `json:"id"`
-	Type  string        `json:"type"`
-	Title string        `json:"title"`
-	Items []ContentItem `json:"items"`
+	ID        int64         `json:"id"`
+	Type      string        `json:"type"`
+	Title     string        `json:"title"`
+	Items     []ContentItem `json:"items"`
+	ProjectID int64         `json:"project_id"`
 }
 
 type ContentEntry struct {
@@ -118,6 +120,7 @@ type ContentEntry struct {
 
 type DetailPermission struct {
 	ID          int64   `json:"id"`
+	UserID      int64   `json:"user_id"`
 	ContentType string  `json:"content_type"`
 	ContentIDs  []int64 `json:"content_ids"`
 	Action      string  `json:"action"`

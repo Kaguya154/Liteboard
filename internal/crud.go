@@ -11,7 +11,7 @@ import (
 // Project CRUD
 
 func CreateProject(db types.Conn, p *Project) (int64, error) {
-	cond := dbhelper.Cond().Eq("name", p.Name).Eq("description", p.Description).Build()
+	cond := dbhelper.Cond().Eq("name", p.Name).Eq("description", p.Description).Eq("creator_id", p.CreatorID).Build()
 	return db.Insert("project", cond)
 }
 
@@ -29,13 +29,14 @@ func GetProject(db types.Conn, id int64) (*Project, error) {
 		ID:          data["id"].(int64),
 		Name:        data["name"].(string),
 		Description: data["description"].(string),
+		CreatorID:   data["creator_id"].(int64),
 	}
 	return p, nil
 }
 
 func UpdateProject(db types.Conn, id int64, updates *Project) error {
 	cond := dbhelper.Cond().Eq("id", id).Build()
-	upd := dbhelper.Cond().Eq("name", updates.Name).Eq("description", updates.Description).Build()
+	upd := dbhelper.Cond().Eq("name", updates.Name).Eq("description", updates.Description).Eq("creator_id", updates.CreatorID).Build()
 	_, err := db.Update("project", cond, upd)
 	return err
 }
@@ -49,7 +50,8 @@ func DeleteProject(db types.Conn, id int64) error {
 // User CRUD
 
 func CreateUser(db types.Conn, u *User) (int64, error) {
-	cond := dbhelper.Cond().Eq("username", u.Username).Eq("email", u.Email).Build()
+	groupsJson, _ := json.Marshal(u.Groups)
+	cond := dbhelper.Cond().Eq("username", u.Username).Eq("email", u.Email).Eq("groups", string(groupsJson)).Build()
 	return db.Insert("user", cond)
 }
 
@@ -68,12 +70,16 @@ func GetUser(db types.Conn, id int64) (*User, error) {
 		Username: data["username"].(string),
 		Email:    data["email"].(string),
 	}
+	if groupsData, ok := data["groups"].(string); ok {
+		json.Unmarshal([]byte(groupsData), &u.Groups)
+	}
 	return u, nil
 }
 
 func UpdateUser(db types.Conn, id int64, updates *User) error {
+	groupsJson, _ := json.Marshal(updates.Groups)
 	cond := dbhelper.Cond().Eq("id", id).Build()
-	upd := dbhelper.Cond().Eq("username", updates.Username).Eq("email", updates.Email).Build()
+	upd := dbhelper.Cond().Eq("username", updates.Username).Eq("email", updates.Email).Eq("groups", string(groupsJson)).Build()
 	_, err := db.Update("user", cond, upd)
 	return err
 }
@@ -297,7 +303,7 @@ func DeleteSidebarItem(db types.Conn, id int64) error {
 
 func CreateContentList(db types.Conn, cl *ContentList) (int64, error) {
 	itemsJson, _ := json.Marshal(cl.Items)
-	cond := dbhelper.Cond().Eq("type", cl.Type).Eq("title", cl.Title).Eq("items", string(itemsJson)).Build()
+	cond := dbhelper.Cond().Eq("type", cl.Type).Eq("title", cl.Title).Eq("items", string(itemsJson)).Eq("project_id", cl.ProjectID).Build()
 	return db.Insert("content_list", cond)
 }
 
@@ -312,9 +318,10 @@ func GetContentList(db types.Conn, id int64) (*ContentList, error) {
 	}
 	data := rows.All()[0]
 	cl := &ContentList{
-		ID:    data["id"].(int64),
-		Type:  data["type"].(string),
-		Title: data["title"].(string),
+		ID:        data["id"].(int64),
+		Type:      data["type"].(string),
+		Title:     data["title"].(string),
+		ProjectID: data["project_id"].(int64),
 	}
 	itemsJson := data["items"].(string)
 	json.Unmarshal([]byte(itemsJson), &cl.Items)
@@ -324,7 +331,7 @@ func GetContentList(db types.Conn, id int64) (*ContentList, error) {
 func UpdateContentList(db types.Conn, id int64, updates *ContentList) error {
 	itemsJson, _ := json.Marshal(updates.Items)
 	cond := dbhelper.Cond().Eq("id", id).Build()
-	upd := dbhelper.Cond().Eq("type", updates.Type).Eq("title", updates.Title).Eq("items", string(itemsJson)).Build()
+	upd := dbhelper.Cond().Eq("type", updates.Type).Eq("title", updates.Title).Eq("items", string(itemsJson)).Eq("project_id", updates.ProjectID).Build()
 	_, err := db.Update("content_list", cond, upd)
 	return err
 }
@@ -378,7 +385,7 @@ func DeleteContentEntry(db types.Conn, id int64) error {
 
 func CreateDetailPermission(db types.Conn, dp *DetailPermission) (int64, error) {
 	contentIDsJson, _ := json.Marshal(dp.ContentIDs)
-	cond := dbhelper.Cond().Eq("content_type", dp.ContentType).Eq("content_ids", string(contentIDsJson)).Eq("action", dp.Action).Build()
+	cond := dbhelper.Cond().Eq("user_id", dp.UserID).Eq("content_type", dp.ContentType).Eq("content_ids", string(contentIDsJson)).Eq("action", dp.Action).Build()
 	return db.Insert("detail_permission", cond)
 }
 
@@ -394,6 +401,7 @@ func GetDetailPermission(db types.Conn, id int64) (*DetailPermission, error) {
 	data := rows.All()[0]
 	dp := &DetailPermission{
 		ID:          data["id"].(int64),
+		UserID:      data["user_id"].(int64),
 		ContentType: data["content_type"].(string),
 		Action:      data["action"].(string),
 	}
@@ -405,7 +413,7 @@ func GetDetailPermission(db types.Conn, id int64) (*DetailPermission, error) {
 func UpdateDetailPermission(db types.Conn, id int64, updates *DetailPermission) error {
 	contentIDsJson, _ := json.Marshal(updates.ContentIDs)
 	cond := dbhelper.Cond().Eq("id", id).Build()
-	upd := dbhelper.Cond().Eq("content_type", updates.ContentType).Eq("content_ids", string(contentIDsJson)).Eq("action", updates.Action).Build()
+	upd := dbhelper.Cond().Eq("user_id", updates.UserID).Eq("content_type", updates.ContentType).Eq("content_ids", string(contentIDsJson)).Eq("action", updates.Action).Build()
 	_, err := db.Update("detail_permission", cond, upd)
 	return err
 }
@@ -497,4 +505,129 @@ func DeleteRole(db types.Conn, id int64) error {
 	cond := dbhelper.Cond().Eq("id", id).Build()
 	_, err := db.Delete("role", cond)
 	return err
+}
+
+// Get all projects
+func GetProjects(db types.Conn) ([]Project, error) {
+	rows, err := db.Query("project", nil)
+	if err != nil {
+		return nil, err
+	}
+	var projects []Project
+	for _, data := range rows.All() {
+		p := Project{
+			ID:          data["id"].(int64),
+			Name:        data["name"].(string),
+			Description: data["description"].(string),
+			CreatorID:   data["creator_id"].(int64),
+		}
+		projects = append(projects, p)
+	}
+	return projects, nil
+}
+
+// Get all users
+func GetUsers(db types.Conn) ([]User, error) {
+	rows, err := db.Query("user", nil)
+	if err != nil {
+		return nil, err
+	}
+	var users []User
+	for _, data := range rows.All() {
+		u := User{
+			ID:       data["id"].(int64),
+			Username: data["username"].(string),
+			Email:    data["email"].(string),
+		}
+		if groupsData, ok := data["groups"].(string); ok {
+			json.Unmarshal([]byte(groupsData), &u.Groups)
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+// Get all content lists for a project
+func GetContentListsByProject(db types.Conn, projectID int64) ([]ContentList, error) {
+	cond := dbhelper.Cond().Eq("project_id", projectID).Build()
+	rows, err := db.Query("content_list", cond)
+	if err != nil {
+		return nil, err
+	}
+	var lists []ContentList
+	for _, data := range rows.All() {
+		cl := ContentList{
+			ID:        data["id"].(int64),
+			Type:      data["type"].(string),
+			Title:     data["title"].(string),
+			ProjectID: data["project_id"].(int64),
+		}
+		if itemsJson, ok := data["items"].(string); ok {
+			json.Unmarshal([]byte(itemsJson), &cl.Items)
+		}
+		lists = append(lists, cl)
+	}
+	return lists, nil
+}
+
+// Get all detail permissions
+func GetDetailPermissions(db types.Conn) ([]DetailPermission, error) {
+	rows, err := db.Query("detail_permission", nil)
+	if err != nil {
+		return nil, err
+	}
+	var dps []DetailPermission
+	for _, data := range rows.All() {
+		dp := DetailPermission{
+			ID:          data["id"].(int64),
+			UserID:      data["user_id"].(int64),
+			ContentType: data["content_type"].(string),
+			Action:      data["action"].(string),
+		}
+		if contentIDsJson, ok := data["content_ids"].(string); ok {
+			json.Unmarshal([]byte(contentIDsJson), &dp.ContentIDs)
+		}
+		dps = append(dps, dp)
+	}
+	return dps, nil
+}
+
+// Get all permissions
+func GetPermissions(db types.Conn) ([]Permission, error) {
+	rows, err := db.Query("permission", nil)
+	if err != nil {
+		return nil, err
+	}
+	var permissions []Permission
+	for _, data := range rows.All() {
+		p := Permission{
+			ID:          data["id"].(int64),
+			Name:        data["name"].(string),
+			Description: data["description"].(string),
+			ContentType: data["content_type"].(string),
+			Action:      data["action"].(string),
+			Detail:      data["detail"].(int64),
+		}
+		permissions = append(permissions, p)
+	}
+	return permissions, nil
+}
+
+// Get all content entries
+func GetContentEntries(db types.Conn) ([]ContentEntry, error) {
+	rows, err := db.Query("content_entry", nil)
+	if err != nil {
+		return nil, err
+	}
+	var entries []ContentEntry
+	for _, data := range rows.All() {
+		ce := ContentEntry{
+			ID:      data["id"].(int64),
+			Type:    data["type"].(string),
+			Title:   data["title"].(string),
+			Content: data["content"].(string),
+		}
+		entries = append(entries, ce)
+	}
+	return entries, nil
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"liteboard/auth"
 	"liteboard/internal"
 	"strconv"
 
@@ -12,9 +13,9 @@ import (
 func RegisterUserRoutes(r *route.RouterGroup) {
 	r.GET("/users", GetUsers)
 	r.POST("/users", CreateUser)
-	r.GET("/users/:id", GetUser)
-	r.PUT("/users/:id", UpdateUser)
-	r.DELETE("/users/:id", DeleteUser)
+	r.GET("/users/:id", auth.PermissionCheckMiddleware("user", "read", GetIDFromParam), GetUser)
+	r.PUT("/users/:id", auth.PermissionCheckMiddleware("user", "write", GetIDFromParam), UpdateUser)
+	r.DELETE("/users/:id", auth.PermissionCheckMiddleware("user", "admin", GetIDFromParam), DeleteUser)
 }
 
 // GetUsers @Summary Get all users
@@ -25,8 +26,12 @@ func RegisterUserRoutes(r *route.RouterGroup) {
 // @Success 200 {array} internal.User
 // @Router /api/users [get]
 func GetUsers(ctx context.Context, c *app.RequestContext) {
-	// TODO: implement list all
-	c.JSON(200, []internal.User{})
+	users, err := internal.GetUsers(db)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(200, users)
 }
 
 // CreateUser @Summary Create user
@@ -45,6 +50,7 @@ func CreateUser(ctx context.Context, c *app.RequestContext) {
 		c.JSON(400, map[string]string{"error": err.Error()})
 		return
 	}
+	u.Groups = []string{"user"}
 	id, err := internal.CreateUser(db, &u)
 	if err != nil {
 		c.JSON(500, map[string]string{"error": err.Error()})

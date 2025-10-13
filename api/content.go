@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"liteboard/auth"
 	"liteboard/internal"
 	"strconv"
 
@@ -12,27 +13,42 @@ import (
 func RegisterContentRoutes(r *route.RouterGroup) {
 	r.GET("/content_lists", GetContentLists)
 	r.POST("/content_lists", CreateContentList)
-	r.GET("/content_lists/:id", GetContentList)
-	r.PUT("/content_lists/:id", UpdateContentList)
-	r.DELETE("/content_lists/:id", DeleteContentList)
+	r.GET("/content_lists/:id", auth.PermissionCheckMiddleware("content_list", "read", GetIDFromParam), GetContentList)
+	r.PUT("/content_lists/:id", auth.PermissionCheckMiddleware("content_list", "write", GetIDFromParam), UpdateContentList)
+	r.DELETE("/content_lists/:id", auth.PermissionCheckMiddleware("content_list", "admin", GetIDFromParam), DeleteContentList)
 
 	r.GET("/content_entries", GetContentEntries)
 	r.POST("/content_entries", CreateContentEntry)
-	r.GET("/content_entries/:id", GetContentEntry)
-	r.PUT("/content_entries/:id", UpdateContentEntry)
-	r.DELETE("/content_entries/:id", DeleteContentEntry)
+	r.GET("/content_entries/:id", auth.PermissionCheckMiddleware("content_entry", "read", GetIDFromParam), GetContentEntry)
+	r.PUT("/content_entries/:id", auth.PermissionCheckMiddleware("content_entry", "write", GetIDFromParam), UpdateContentEntry)
+	r.DELETE("/content_entries/:id", auth.PermissionCheckMiddleware("content_entry", "admin", GetIDFromParam), DeleteContentEntry)
 }
 
 // GetContentLists @Summary Get all content lists
-// @Description Retrieve list of content lists
+// @Description Retrieve list of content lists for a project
 // @Tags content
 // @Accept json
 // @Produce json
+// @Param projectid query int true "Project ID"
 // @Success 200 {array} internal.ContentList
 // @Router /api/content_lists [get]
 func GetContentLists(ctx context.Context, c *app.RequestContext) {
-	// TODO: implement list all
-	c.JSON(200, []internal.ContentList{})
+	projectIDStr := c.Query("projectid")
+	if projectIDStr == "" {
+		c.JSON(400, map[string]string{"error": "projectid is required"})
+		return
+	}
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		c.JSON(400, map[string]string{"error": "invalid projectid"})
+		return
+	}
+	lists, err := internal.GetContentListsByProject(db, projectID)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(200, lists)
 }
 
 // CreateContentList @Summary Create content list
@@ -149,8 +165,12 @@ func DeleteContentList(ctx context.Context, c *app.RequestContext) {
 // @Success 200 {array} internal.ContentEntry
 // @Router /api/content_entries [get]
 func GetContentEntries(ctx context.Context, c *app.RequestContext) {
-	// TODO: implement list all
-	c.JSON(200, []internal.ContentEntry{})
+	entries, err := internal.GetContentEntries(db)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(200, entries)
 }
 
 // CreateContentEntry @Summary Create content entry

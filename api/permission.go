@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"liteboard/auth"
 	"liteboard/internal"
 	"strconv"
 
@@ -13,16 +14,16 @@ func RegisterPermissionRoutes(r *route.RouterGroup) {
 	// DetailPermission routes
 	r.GET("/detail_permissions", GetDetailPermissions)
 	r.POST("/detail_permissions", CreateDetailPermission)
-	r.GET("/detail_permissions/:id", GetDetailPermission)
-	r.PUT("/detail_permissions/:id", UpdateDetailPermission)
-	r.DELETE("/detail_permissions/:id", DeleteDetailPermission)
+	r.GET("/detail_permissions/:id", auth.PermissionCheckMiddleware("detail_permission", "read", GetIDFromParam), GetDetailPermission)
+	r.PUT("/detail_permissions/:id", auth.PermissionCheckMiddleware("detail_permission", "write", GetIDFromParam), UpdateDetailPermission)
+	r.DELETE("/detail_permissions/:id", auth.PermissionCheckMiddleware("detail_permission", "admin", GetIDFromParam), DeleteDetailPermission)
 
 	// Permission routes
 	r.GET("/permissions", GetPermissions)
 	r.POST("/permissions", CreatePermission)
-	r.GET("/permissions/:id", GetPermission)
-	r.PUT("/permissions/:id", UpdatePermission)
-	r.DELETE("/permissions/:id", DeletePermission)
+	r.GET("/permissions/:id", auth.PermissionCheckMiddleware("permission", "read", GetIDFromParam), GetPermission)
+	r.PUT("/permissions/:id", auth.PermissionCheckMiddleware("permission", "write", GetIDFromParam), UpdatePermission)
+	r.DELETE("/permissions/:id", auth.PermissionCheckMiddleware("permission", "admin", GetIDFromParam), DeletePermission)
 }
 
 // GetDetailPermissions @Summary Get all detail permissions
@@ -33,8 +34,12 @@ func RegisterPermissionRoutes(r *route.RouterGroup) {
 // @Success 200 {array} internal.DetailPermission
 // @Router /api/detail_permissions [get]
 func GetDetailPermissions(ctx context.Context, c *app.RequestContext) {
-	// TODO: implement list all
-	c.JSON(200, []internal.DetailPermission{})
+	dps, err := internal.GetDetailPermissions(db)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(200, dps)
 }
 
 // CreateDetailPermission @Summary Create detail permission
@@ -151,8 +156,12 @@ func DeleteDetailPermission(ctx context.Context, c *app.RequestContext) {
 // @Success 200 {array} internal.Permission
 // @Router /api/permissions [get]
 func GetPermissions(ctx context.Context, c *app.RequestContext) {
-	// TODO: implement list all
-	c.JSON(200, []internal.Permission{})
+	permissions, err := internal.GetPermissions(db)
+	if err != nil {
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+	c.JSON(200, permissions)
 }
 
 // CreatePermission @Summary Create permission

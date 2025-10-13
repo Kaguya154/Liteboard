@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strconv"
 
+	"liteboard/internal"
+
 	"github.com/Kaguya154/dbhelper"
 	"github.com/Kaguya154/dbhelper/types"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -197,4 +199,42 @@ func GetUserInternalByID(id int64) (*UserInternal, error) {
 func CreateUserInternal(ui *UserInternal) (int64, error) {
 	cond := dbhelper.Cond().Eq("username", ui.Username).Eq("email", ui.Email).Eq("openid", ui.OpenID).Eq("password_hash", ui.PasswordHash).Build()
 	return db.Insert("user", cond)
+}
+
+// 通用的权限检查中间件
+// contentType: 内容类型，如 "project", "content_list"
+// action: 操作类型，如 "read", "write", "admin"
+// getID: 从请求中获取内容ID的函数，如果为nil则不检查ID（适用于列表操作）
+func PermissionCheckMiddleware(contentType string, action string, getID func(*app.RequestContext) (int64, error)) app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		sess := sessions.Default(c)
+		userID := sess.Get("user")
+		if userID == nil {
+			c.JSON(401, map[string]string{"error": "not logged in"})
+			c.Abort()
+			return
+		}
+
+		if getID != nil {
+			id, err := getID(c)
+			if err != nil {
+				c.JSON(400, map[string]string{"error": "invalid id"})
+				c.Abort()
+				return
+			}
+			hasPerm, err := internal.HasPermission(db, userID.(int64), contentType, id, action)
+			if err != nil {
+				c.JSON(500, map[string]string{"error": err.Error()})
+				c.Abort()
+				return
+			}
+			if !hasPerm {
+				c.JSON(403, map[string]string{"error": "forbidden"})
+				c.Abort()
+				return
+			}
+		}
+		// 如果getID为nil，跳过ID检查（适用于列表操作或创建操作）
+		c.Next(ctx)
+	}
 }
