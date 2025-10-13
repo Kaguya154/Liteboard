@@ -73,8 +73,21 @@ func main() {
 	r := h.Group("/")
 	
 	// Serve static files
-	r.StaticFS("/css", &app.FS{Root: "./frontend/css"})
-	r.StaticFS("/js", &app.FS{Root: "./frontend/js"})
+	r.GET("/css/styles.css", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/css/styles.css")
+	})
+	r.GET("/js/api.js", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/js/api.js")
+	})
+	r.GET("/js/auth.js", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/js/auth.js")
+	})
+	r.GET("/js/dashboard.js", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/js/dashboard.js")
+	})
+	r.GET("/js/board.js", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/js/board.js")
+	})
 	
 	// Serve HTML pages
 	r.GET("/", func(ctx context.Context, c *app.RequestContext) {
