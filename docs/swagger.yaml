@@ -3,27 +3,27 @@ definitions:
     properties:
       content:
         type: string
+      creator_id:
+        type: integer
       id:
+        type: integer
+      project_id:
         type: integer
       title:
         type: string
       type:
         type: string
     type: object
-  internal.ContentItem:
-    properties:
-      entry:
-        $ref: '#/definitions/internal.ContentEntry'
-      list:
-        $ref: '#/definitions/internal.ContentList'
-    type: object
   internal.ContentList:
     properties:
+      creator_id:
+        type: integer
       id:
         type: integer
       items:
+        description: 存储 content entry 的 ID
         items:
-          $ref: '#/definitions/internal.ContentItem'
+          type: integer
         type: array
       project_id:
         type: integer
@@ -46,6 +46,15 @@ definitions:
         type: integer
       user_id:
         type: integer
+    type: object
+  internal.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+      message:
+        type: string
     type: object
   internal.Permission:
     properties:
@@ -73,6 +82,12 @@ definitions:
       name:
         type: string
     type: object
+  internal.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
   internal.User:
     properties:
       email:
@@ -93,7 +108,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieve list of content entries
+      description: Retrieve list of content entries. Each entry includes creator_id
+        and project_id.
       produces:
       - application/json
       responses:
@@ -103,14 +119,19 @@ paths:
             items:
               $ref: '#/definitions/internal.ContentEntry'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - content
     post:
       consumes:
       - application/json
-      description: Create a new content entry
+      description: Create a new content entry. The creator_id will be automatically
+        set to the current user.
       parameters:
-      - description: Content Entry
+      - description: Content Entry (creator_id will be set automatically)
         in: body
         name: contentEntry
         required: true
@@ -126,15 +147,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - content
   /api/content_entries/{id}:
@@ -154,27 +175,32 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - content
     get:
       consumes:
       - application/json
-      description: Retrieve a content entry by ID
+      description: Retrieve a content entry by ID. Returns the entry with creator_id
+        and project_id.
       parameters:
       - description: Content Entry ID
         in: path
@@ -191,15 +217,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - content
     put:
@@ -228,15 +260,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - content
   /api/content_lists:
@@ -259,6 +297,14 @@ paths:
             items:
               $ref: '#/definitions/internal.ContentList'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - content
     post:
@@ -282,15 +328,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - content
   /api/content_lists/{id}:
@@ -310,21 +356,25 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - content
     get:
@@ -347,15 +397,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - content
     put:
@@ -384,15 +440,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - content
   /api/detail_permissions:
@@ -409,6 +471,10 @@ paths:
             items:
               $ref: '#/definitions/internal.DetailPermission'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - permissions
     post:
@@ -432,15 +498,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - permissions
   /api/detail_permissions/{id}:
@@ -460,21 +522,25 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - permissions
     get:
@@ -497,15 +563,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - permissions
     put:
@@ -534,15 +606,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - permissions
   /api/permissions:
@@ -559,6 +637,10 @@ paths:
             items:
               $ref: '#/definitions/internal.Permission'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - permissions
     post:
@@ -582,15 +664,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - permissions
   /api/permissions/{id}:
@@ -610,21 +688,25 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - permissions
     get:
@@ -647,15 +729,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - permissions
     put:
@@ -684,15 +772,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - permissions
   /api/projects:
@@ -709,6 +803,14 @@ paths:
             items:
               $ref: '#/definitions/internal.Project'
             type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - projects
     post:
@@ -732,15 +834,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - projects
   /api/projects/{id}:
@@ -760,21 +862,25 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - projects
     get:
@@ -797,15 +903,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - projects
     put:
@@ -834,15 +946,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - projects
   /api/users:
@@ -859,6 +977,10 @@ paths:
             items:
               $ref: '#/definitions/internal.User'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - users
     post:
@@ -882,15 +1004,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - users
   /api/users/{id}:
@@ -910,21 +1028,25 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - users
     get:
@@ -947,15 +1069,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - users
     put:
@@ -984,15 +1112,21 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.ErrorResponse'
+      security:
+      - Session: []
       tags:
       - users
   /auth/login:
@@ -1020,9 +1154,11 @@ paths:
         "200":
           description: Logged out
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/internal.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal.ErrorResponse'
       tags:
       - auth
 swagger: "2.0"
