@@ -3,3 +3,4 @@
 .idea
 frontend/*.gz
 frontend/index/*.gz
+frontend/**/*.gz
