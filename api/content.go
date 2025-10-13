@@ -33,21 +33,23 @@ func RegisterContentRoutes(r *route.RouterGroup) {
 // @Produce json
 // @Param projectid query int true "Project ID"
 // @Success 200 {array} internal.ContentList
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/content_lists [get]
 func GetContentLists(ctx context.Context, c *app.RequestContext) {
 	projectIDStr := c.Query("projectid")
 	if projectIDStr == "" {
-		c.JSON(400, map[string]string{"error": "projectid is required"})
+		c.JSON(400, internal.NewErrorResponse("projectid is required"))
 		return
 	}
 	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid projectid"})
+		c.JSON(400, internal.NewErrorResponse("invalid projectid"))
 		return
 	}
 	lists, err := internal.GetContentListsByProject(db, projectID)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, lists)
@@ -60,8 +62,9 @@ func GetContentLists(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param contentList body internal.ContentList true "Content List"
 // @Success 201 {object} internal.ContentList
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/content_lists [post]
 func CreateContentList(ctx context.Context, c *app.RequestContext) {
 	hlog.Debug("CreateContentList: Starting request")
@@ -70,20 +73,20 @@ func CreateContentList(ctx context.Context, c *app.RequestContext) {
 
 	if userVal == nil {
 		hlog.Debug("CreateContentList: user not in session")
-		c.JSON(401, map[string]string{"error": "not logged in"})
+		c.JSON(401, internal.NewErrorResponse("not logged in"))
 		return
 	}
 	user, ok := userVal.(*auth.User)
 	if !ok {
 		hlog.Errorf("CreateContentList: invalid user session type, got %T", userVal)
-		c.JSON(500, map[string]string{"error": "invalid user session"})
+		c.JSON(500, internal.NewErrorResponse("invalid user session"))
 		return
 	}
 
 	var cl internal.ContentList
 	if err := c.BindJSON(&cl); err != nil {
 		hlog.Errorf("CreateContentList: BindJSON failed, error=%v", err)
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 
@@ -91,7 +94,7 @@ func CreateContentList(ctx context.Context, c *app.RequestContext) {
 	id, err := internal.CreateContentList(db, &cl)
 	if err != nil {
 		hlog.Errorf("CreateContentList: CreateContentList failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	cl.ID = id
@@ -106,7 +109,7 @@ func CreateContentList(ctx context.Context, c *app.RequestContext) {
 	_, err = internal.CreateDetailPermission(db, &dp)
 	if err != nil {
 		hlog.Errorf("CreateContentList: CreateDetailPermission(admin) failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 
@@ -120,7 +123,7 @@ func CreateContentList(ctx context.Context, c *app.RequestContext) {
 	_, err = internal.CreateDetailPermission(db, &dpRead)
 	if err != nil {
 		hlog.Errorf("CreateContentList: CreateDetailPermission(read) failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 
@@ -135,19 +138,22 @@ func CreateContentList(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param id path int true "Content List ID"
 // @Success 200 {object} internal.ContentList
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 404 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/content_lists/{id} [get]
 func GetContentList(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	cl, err := internal.GetContentList(db, id)
 	if err != nil {
-		c.JSON(404, map[string]string{"error": err.Error()})
+		c.JSON(404, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, cl)
@@ -161,24 +167,27 @@ func GetContentList(ctx context.Context, c *app.RequestContext) {
 // @Param id path int true "Content List ID"
 // @Param contentList body internal.ContentList true "Content List"
 // @Success 200 {object} internal.ContentList
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/content_lists/{id} [put]
 func UpdateContentList(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	var cl internal.ContentList
 	if err := c.BindJSON(&cl); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	err = internal.UpdateContentList(db, id, &cl)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, cl)
@@ -190,50 +199,55 @@ func UpdateContentList(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Content List ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} internal.SuccessResponse
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/content_lists/{id} [delete]
 func DeleteContentList(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	err = internal.DeleteContentList(db, id)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "deleted"})
+	c.JSON(200, internal.NewSuccessResponse("deleted"))
 }
 
 // GetContentEntries @Summary Get all content entries
-// @Description Retrieve list of content entries
+// @Description Retrieve list of content entries. Each entry includes creator_id and project_id.
 // @Tags content
 // @Accept json
 // @Produce json
 // @Success 200 {array} internal.ContentEntry
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/content_entries [get]
 func GetContentEntries(ctx context.Context, c *app.RequestContext) {
 	entries, err := internal.GetContentEntries(db)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, entries)
 }
 
 // CreateContentEntry @Summary Create content entry
-// @Description Create a new content entry
+// @Description Create a new content entry. The creator_id will be automatically set to the current user.
 // @Tags content
 // @Accept json
 // @Produce json
-// @Param contentEntry body internal.ContentEntry true "Content Entry"
+// @Param contentEntry body internal.ContentEntry true "Content Entry (creator_id will be set automatically)"
 // @Success 201 {object} internal.ContentEntry
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/content_entries [post]
 func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
 	hlog.Debug("CreateContentEntry: Starting request")
@@ -242,20 +256,20 @@ func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
 
 	if userVal == nil {
 		hlog.Debug("CreateContentEntry: user not in session")
-		c.JSON(401, map[string]string{"error": "not logged in"})
+		c.JSON(401, internal.NewErrorResponse("not logged in"))
 		return
 	}
 	user, ok := userVal.(*auth.User)
 	if !ok {
 		hlog.Errorf("CreateContentEntry: invalid user session type, got %T", userVal)
-		c.JSON(500, map[string]string{"error": "invalid user session"})
+		c.JSON(500, internal.NewErrorResponse("invalid user session"))
 		return
 	}
 
 	var ce internal.ContentEntry
 	if err := c.BindJSON(&ce); err != nil {
 		hlog.Errorf("CreateContentEntry: BindJSON failed, error=%v", err)
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 
@@ -263,7 +277,7 @@ func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
 	id, err := internal.CreateContentEntry(db, &ce)
 	if err != nil {
 		hlog.Errorf("CreateContentEntry: CreateContentEntry failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	ce.ID = id
@@ -278,7 +292,7 @@ func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
 	_, err = internal.CreateDetailPermission(db, &dp)
 	if err != nil {
 		hlog.Errorf("CreateContentEntry: CreateDetailPermission(admin) failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 
@@ -292,7 +306,7 @@ func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
 	_, err = internal.CreateDetailPermission(db, &dpRead)
 	if err != nil {
 		hlog.Errorf("CreateContentEntry: CreateDetailPermission(read) failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 
@@ -301,25 +315,28 @@ func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
 }
 
 // GetContentEntry @Summary Get content entry by ID
-// @Description Retrieve a content entry by ID
+// @Description Retrieve a content entry by ID. Returns the entry with creator_id and project_id.
 // @Tags content
 // @Accept json
 // @Produce json
 // @Param id path int true "Content Entry ID"
 // @Success 200 {object} internal.ContentEntry
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 404 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/content_entries/{id} [get]
 func GetContentEntry(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	ce, err := internal.GetContentEntry(db, id)
 	if err != nil {
-		c.JSON(404, map[string]string{"error": err.Error()})
+		c.JSON(404, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, ce)
@@ -333,24 +350,27 @@ func GetContentEntry(ctx context.Context, c *app.RequestContext) {
 // @Param id path int true "Content Entry ID"
 // @Param contentEntry body internal.ContentEntry true "Content Entry"
 // @Success 200 {object} internal.ContentEntry
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/content_entries/{id} [put]
 func UpdateContentEntry(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	var ce internal.ContentEntry
 	if err := c.BindJSON(&ce); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	err = internal.UpdateContentEntry(db, id, &ce)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, ce)
@@ -362,21 +382,24 @@ func UpdateContentEntry(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Content Entry ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} internal.SuccessResponse
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/content_entries/{id} [delete]
 func DeleteContentEntry(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	err = internal.DeleteContentEntry(db, id)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "deleted"})
+	c.JSON(200, internal.NewSuccessResponse("deleted"))
 }

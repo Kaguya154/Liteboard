@@ -32,6 +32,8 @@ func RegisterProjectRoutes(r *route.RouterGroup) {
 // @Accept json
 // @Produce json
 // @Success 200 {array} internal.Project
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/projects [get]
 func GetProjects(ctx context.Context, c *app.RequestContext) {
 	hlog.Debug("GetProjects: Starting request")
@@ -41,13 +43,13 @@ func GetProjects(ctx context.Context, c *app.RequestContext) {
 
 	if userVal == nil {
 		hlog.Debug("GetProjects: user not in session")
-		c.JSON(401, map[string]string{"error": "not logged in"})
+		c.JSON(401, internal.NewErrorResponse("not logged in"))
 		return
 	}
 	user, ok := userVal.(*auth.User)
 	if !ok {
 		hlog.Errorf("GetProjects: invalid user session type, got %T", userVal)
-		c.JSON(500, map[string]string{"error": "invalid user session"})
+		c.JSON(500, internal.NewErrorResponse("invalid user session"))
 		return
 	}
 	hlog.Debugf("GetProjects: user authenticated, ID=%d, Username=%s", user.ID, user.Username)
@@ -55,7 +57,7 @@ func GetProjects(ctx context.Context, c *app.RequestContext) {
 	projects, err := internal.GetProjectsForUser(db, user.ID)
 	if err != nil {
 		hlog.Errorf("GetProjects: GetProjectsForUser failed, userID=%d, error=%v", user.ID, err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	hlog.Debugf("GetProjects: successfully retrieved %d projects for user %d", len(projects), user.ID)
@@ -69,8 +71,9 @@ func GetProjects(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param project body internal.Project true "Project"
 // @Success 201 {object} internal.Project
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/projects [post]
 func CreateProject(ctx context.Context, c *app.RequestContext) {
 	hlog.Debug("CreateProject: Starting request")
@@ -79,13 +82,13 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 
 	if userVal == nil {
 		hlog.Debug("CreateProject: user not in session")
-		c.JSON(401, map[string]string{"error": "not logged in"})
+		c.JSON(401, internal.NewErrorResponse("not logged in"))
 		return
 	}
 	user, ok := userVal.(*auth.User)
 	if !ok {
 		hlog.Errorf("CreateProject: invalid user session type, got %T", userVal)
-		c.JSON(500, map[string]string{"error": "invalid user session"})
+		c.JSON(500, internal.NewErrorResponse("invalid user session"))
 		return
 	}
 	hlog.Debugf("CreateProject: user authenticated, ID=%d, Username=%s", user.ID, user.Username)
@@ -93,7 +96,7 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 	var p internal.Project
 	if err := c.BindJSON(&p); err != nil {
 		hlog.Errorf("CreateProject: BindJSON failed, error=%v", err)
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	hlog.Debugf("CreateProject: project data bound, Name=%s", p.Name)
@@ -102,7 +105,7 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 	id, err := internal.CreateProject(db, &p)
 	if err != nil {
 		hlog.Errorf("CreateProject: CreateProject failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	p.ID = id
@@ -118,7 +121,7 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 	_, err = internal.CreateDetailPermission(db, &dp)
 	if err != nil {
 		hlog.Errorf("CreateProject: CreateDetailPermission(admin) failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	hlog.Debug("CreateProject: admin permission created")
@@ -133,7 +136,7 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 	_, err = internal.CreateDetailPermission(db, &dpRead)
 	if err != nil {
 		hlog.Errorf("CreateProject: CreateDetailPermission(read) failed, error=%v", err)
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	hlog.Debug("CreateProject: read permission created")
@@ -148,19 +151,22 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param id path int true "Project ID"
 // @Success 200 {object} internal.Project
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 404 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/projects/{id} [get]
 func GetProject(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	p, err := internal.GetProject(db, id)
 	if err != nil {
-		c.JSON(404, map[string]string{"error": err.Error()})
+		c.JSON(404, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, p)
@@ -174,24 +180,27 @@ func GetProject(ctx context.Context, c *app.RequestContext) {
 // @Param id path int true "Project ID"
 // @Param project body internal.Project true "Project"
 // @Success 200 {object} internal.Project
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/projects/{id} [put]
 func UpdateProject(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	var p internal.Project
 	if err := c.BindJSON(&p); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	err = internal.UpdateProject(db, id, &p)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, p)
@@ -203,21 +212,24 @@ func UpdateProject(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Project ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} internal.SuccessResponse
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/projects/{id} [delete]
 func DeleteProject(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	err = internal.DeleteProject(db, id)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "deleted"})
+	c.JSON(200, internal.NewSuccessResponse("deleted"))
 }

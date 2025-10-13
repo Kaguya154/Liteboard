@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"liteboard/auth"
+	"liteboard/internal"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/route"
@@ -26,16 +27,17 @@ func Login(ctx context.Context, c *app.RequestContext) {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string "Logged out"
+// @Success 200 {object} internal.SuccessResponse "Logged out"
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /auth/logout [post]
 func Logout(ctx context.Context, c *app.RequestContext) {
 	sess := sessions.Default(c)
 	sess.Delete("user")
 	if err := sess.Save(); err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "logged out"})
+	c.JSON(200, internal.NewSuccessResponse("logged out"))
 }
 
 // RegisterAuthRoutes 注册认证路由

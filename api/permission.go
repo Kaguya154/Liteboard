@@ -32,11 +32,12 @@ func RegisterPermissionRoutes(r *route.RouterGroup) {
 // @Accept json
 // @Produce json
 // @Success 200 {array} internal.DetailPermission
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/detail_permissions [get]
 func GetDetailPermissions(ctx context.Context, c *app.RequestContext) {
 	dps, err := internal.GetDetailPermissions(db)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, dps)
@@ -49,18 +50,18 @@ func GetDetailPermissions(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param detailPermission body internal.DetailPermission true "Detail Permission"
 // @Success 201 {object} internal.DetailPermission
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/detail_permissions [post]
 func CreateDetailPermission(ctx context.Context, c *app.RequestContext) {
 	var dp internal.DetailPermission
 	if err := c.BindJSON(&dp); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	id, err := internal.CreateDetailPermission(db, &dp)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	dp.ID = id
@@ -74,19 +75,22 @@ func CreateDetailPermission(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param id path int true "Detail Permission ID"
 // @Success 200 {object} internal.DetailPermission
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 404 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/detail_permissions/{id} [get]
 func GetDetailPermission(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	dp, err := internal.GetDetailPermission(db, id)
 	if err != nil {
-		c.JSON(404, map[string]string{"error": err.Error()})
+		c.JSON(404, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, dp)
@@ -100,24 +104,27 @@ func GetDetailPermission(ctx context.Context, c *app.RequestContext) {
 // @Param id path int true "Detail Permission ID"
 // @Param detailPermission body internal.DetailPermission true "Detail Permission"
 // @Success 200 {object} internal.DetailPermission
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/detail_permissions/{id} [put]
 func UpdateDetailPermission(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	var dp internal.DetailPermission
 	if err := c.BindJSON(&dp); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	err = internal.UpdateDetailPermission(db, id, &dp)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, dp)
@@ -129,23 +136,26 @@ func UpdateDetailPermission(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Detail Permission ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} internal.SuccessResponse
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/detail_permissions/{id} [delete]
 func DeleteDetailPermission(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	err = internal.DeleteDetailPermission(db, id)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "deleted"})
+	c.JSON(200, internal.NewSuccessResponse("deleted"))
 }
 
 // GetPermissions @Summary Get all permissions
@@ -154,11 +164,12 @@ func DeleteDetailPermission(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Success 200 {array} internal.Permission
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/permissions [get]
 func GetPermissions(ctx context.Context, c *app.RequestContext) {
 	permissions, err := internal.GetPermissions(db)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, permissions)
@@ -171,18 +182,18 @@ func GetPermissions(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param permission body internal.Permission true "Permission"
 // @Success 201 {object} internal.Permission
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/permissions [post]
 func CreatePermission(ctx context.Context, c *app.RequestContext) {
 	var p internal.Permission
 	if err := c.BindJSON(&p); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	id, err := internal.CreatePermission(db, &p)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	p.ID = id
@@ -196,19 +207,22 @@ func CreatePermission(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param id path int true "Permission ID"
 // @Success 200 {object} internal.Permission
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 404 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/permissions/{id} [get]
 func GetPermission(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	p, err := internal.GetPermission(db, id)
 	if err != nil {
-		c.JSON(404, map[string]string{"error": err.Error()})
+		c.JSON(404, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, p)
@@ -222,24 +236,27 @@ func GetPermission(ctx context.Context, c *app.RequestContext) {
 // @Param id path int true "Permission ID"
 // @Param permission body internal.Permission true "Permission"
 // @Success 200 {object} internal.Permission
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/permissions/{id} [put]
 func UpdatePermission(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	var p internal.Permission
 	if err := c.BindJSON(&p); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	err = internal.UpdatePermission(db, id, &p)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, p)
@@ -251,21 +268,24 @@ func UpdatePermission(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Param id path int true "Permission ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} internal.SuccessResponse
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/permissions/{id} [delete]
 func DeletePermission(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	err = internal.DeletePermission(db, id)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "deleted"})
+	c.JSON(200, internal.NewSuccessResponse("deleted"))
 }
