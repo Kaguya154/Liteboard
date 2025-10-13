@@ -303,7 +303,7 @@ func DeleteSidebarItem(db types.Conn, id int64) error {
 
 func CreateContentList(db types.Conn, cl *ContentList) (int64, error) {
 	itemsJson, _ := json.Marshal(cl.Items)
-	cond := dbhelper.Cond().Eq("type", cl.Type).Eq("title", cl.Title).Eq("items", string(itemsJson)).Eq("project_id", cl.ProjectID).Build()
+	cond := dbhelper.Cond().Eq("type", cl.Type).Eq("title", cl.Title).Eq("items", string(itemsJson)).Eq("creator_id", cl.CreatorID).Eq("project_id", cl.ProjectID).Build()
 	return db.Insert("content_list", cond)
 }
 
@@ -321,6 +321,7 @@ func GetContentList(db types.Conn, id int64) (*ContentList, error) {
 		ID:        data["id"].(int64),
 		Type:      data["type"].(string),
 		Title:     data["title"].(string),
+		CreatorID: data["creator_id"].(int64),
 		ProjectID: data["project_id"].(int64),
 	}
 	itemsJson := data["items"].(string)
@@ -331,7 +332,7 @@ func GetContentList(db types.Conn, id int64) (*ContentList, error) {
 func UpdateContentList(db types.Conn, id int64, updates *ContentList) error {
 	itemsJson, _ := json.Marshal(updates.Items)
 	cond := dbhelper.Cond().Eq("id", id).Build()
-	upd := dbhelper.Cond().Eq("type", updates.Type).Eq("title", updates.Title).Eq("items", string(itemsJson)).Eq("project_id", updates.ProjectID).Build()
+	upd := dbhelper.Cond().Eq("type", updates.Type).Eq("title", updates.Title).Eq("items", string(itemsJson)).Eq("creator_id", updates.CreatorID).Eq("project_id", updates.ProjectID).Build()
 	_, err := db.Update("content_list", cond, upd)
 	return err
 }
@@ -345,7 +346,7 @@ func DeleteContentList(db types.Conn, id int64) error {
 // ContentEntry CRUD
 
 func CreateContentEntry(db types.Conn, ce *ContentEntry) (int64, error) {
-	cond := dbhelper.Cond().Eq("type", ce.Type).Eq("title", ce.Title).Eq("content", ce.Content).Build()
+	cond := dbhelper.Cond().Eq("type", ce.Type).Eq("title", ce.Title).Eq("content", ce.Content).Eq("creator_id", ce.CreatorID).Eq("project_id", ce.ProjectID).Build()
 	return db.Insert("content_entry", cond)
 }
 
@@ -360,17 +361,19 @@ func GetContentEntry(db types.Conn, id int64) (*ContentEntry, error) {
 	}
 	data := rows.All()[0]
 	ce := &ContentEntry{
-		ID:      data["id"].(int64),
-		Type:    data["type"].(string),
-		Title:   data["title"].(string),
-		Content: data["content"].(string),
+		ID:        data["id"].(int64),
+		Type:      data["type"].(string),
+		Title:     data["title"].(string),
+		Content:   data["content"].(string),
+		CreatorID: data["creator_id"].(int64),
+		ProjectID: data["project_id"].(int64),
 	}
 	return ce, nil
 }
 
 func UpdateContentEntry(db types.Conn, id int64, updates *ContentEntry) error {
 	cond := dbhelper.Cond().Eq("id", id).Build()
-	upd := dbhelper.Cond().Eq("type", updates.Type).Eq("title", updates.Title).Eq("content", updates.Content).Build()
+	upd := dbhelper.Cond().Eq("type", updates.Type).Eq("title", updates.Title).Eq("content", updates.Content).Eq("creator_id", updates.CreatorID).Eq("project_id", updates.ProjectID).Build()
 	_, err := db.Update("content_entry", cond, upd)
 	return err
 }
@@ -511,9 +514,9 @@ func DeleteRole(db types.Conn, id int64) error {
 func GetProjects(db types.Conn) ([]Project, error) {
 	rows, err := db.Query("project", nil)
 	if err != nil {
-		return nil, err
+		return []Project{}, err
 	}
-	var projects []Project
+	projects := make([]Project, 0)
 	for _, data := range rows.All() {
 		p := Project{
 			ID:          data["id"].(int64),
@@ -530,9 +533,9 @@ func GetProjects(db types.Conn) ([]Project, error) {
 func GetUsers(db types.Conn) ([]User, error) {
 	rows, err := db.Query("user", nil)
 	if err != nil {
-		return nil, err
+		return []User{}, err
 	}
-	var users []User
+	users := make([]User, 0)
 	for _, data := range rows.All() {
 		u := User{
 			ID:       data["id"].(int64),
@@ -552,18 +555,21 @@ func GetContentListsByProject(db types.Conn, projectID int64) ([]ContentList, er
 	cond := dbhelper.Cond().Eq("project_id", projectID).Build()
 	rows, err := db.Query("content_list", cond)
 	if err != nil {
-		return nil, err
+		return []ContentList{}, err
 	}
-	var lists []ContentList
+	lists := make([]ContentList, 0)
 	for _, data := range rows.All() {
 		cl := ContentList{
 			ID:        data["id"].(int64),
 			Type:      data["type"].(string),
 			Title:     data["title"].(string),
+			CreatorID: data["creator_id"].(int64),
 			ProjectID: data["project_id"].(int64),
 		}
-		if itemsJson, ok := data["items"].(string); ok {
+		if itemsJson, ok := data["items"].(string); ok && itemsJson != "" {
 			json.Unmarshal([]byte(itemsJson), &cl.Items)
+		} else {
+			cl.Items = make([]int64, 0)
 		}
 		lists = append(lists, cl)
 	}
@@ -574,9 +580,9 @@ func GetContentListsByProject(db types.Conn, projectID int64) ([]ContentList, er
 func GetDetailPermissions(db types.Conn) ([]DetailPermission, error) {
 	rows, err := db.Query("detail_permission", nil)
 	if err != nil {
-		return nil, err
+		return []DetailPermission{}, err
 	}
-	var dps []DetailPermission
+	dps := make([]DetailPermission, 0)
 	for _, data := range rows.All() {
 		dp := DetailPermission{
 			ID:          data["id"].(int64),
@@ -596,9 +602,9 @@ func GetDetailPermissions(db types.Conn) ([]DetailPermission, error) {
 func GetPermissions(db types.Conn) ([]Permission, error) {
 	rows, err := db.Query("permission", nil)
 	if err != nil {
-		return nil, err
+		return []Permission{}, err
 	}
-	var permissions []Permission
+	permissions := make([]Permission, 0)
 	for _, data := range rows.All() {
 		p := Permission{
 			ID:          data["id"].(int64),
@@ -617,15 +623,17 @@ func GetPermissions(db types.Conn) ([]Permission, error) {
 func GetContentEntries(db types.Conn) ([]ContentEntry, error) {
 	rows, err := db.Query("content_entry", nil)
 	if err != nil {
-		return nil, err
+		return []ContentEntry{}, err
 	}
-	var entries []ContentEntry
+	entries := make([]ContentEntry, 0)
 	for _, data := range rows.All() {
 		ce := ContentEntry{
-			ID:      data["id"].(int64),
-			Type:    data["type"].(string),
-			Title:   data["title"].(string),
-			Content: data["content"].(string),
+			ID:        data["id"].(int64),
+			Type:      data["type"].(string),
+			Title:     data["title"].(string),
+			Content:   data["content"].(string),
+			CreatorID: data["creator_id"].(int64),
+			ProjectID: data["project_id"].(int64),
 		}
 		entries = append(entries, ce)
 	}

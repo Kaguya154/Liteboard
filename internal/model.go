@@ -5,6 +5,39 @@ import (
 	"fmt"
 )
 
+// ErrorResponse represents a standard error response
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message,omitempty"`
+	Code    int    `json:"code,omitempty"`
+}
+
+// SuccessResponse represents a standard success response
+type SuccessResponse struct {
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+// NewErrorResponse creates a new error response
+func NewErrorResponse(error string) ErrorResponse {
+	return ErrorResponse{Error: error}
+}
+
+// NewErrorResponseWithMessage creates a new error response with detailed message
+func NewErrorResponseWithMessage(error string, message string) ErrorResponse {
+	return ErrorResponse{Error: error, Message: message}
+}
+
+// NewSuccessResponse creates a new success response
+func NewSuccessResponse(message string) SuccessResponse {
+	return SuccessResponse{Message: message}
+}
+
+// NewSuccessResponseWithData creates a new success response with data
+func NewSuccessResponseWithData(message string, data interface{}) SuccessResponse {
+	return SuccessResponse{Message: message, Data: data}
+}
+
 type Project struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
@@ -104,18 +137,21 @@ func (ci *ContentItem) UnmarshalJSON(data []byte) error {
 }
 
 type ContentList struct {
-	ID        int64         `json:"id"`
-	Type      string        `json:"type"`
-	Title     string        `json:"title"`
-	Items     []ContentItem `json:"items"`
-	ProjectID int64         `json:"project_id"`
+	ID        int64   `json:"id"`
+	Type      string  `json:"type"`
+	Title     string  `json:"title"`
+	Items     []int64 `json:"items"` // 存储 content entry 的 ID
+	CreatorID int64   `json:"creator_id"`
+	ProjectID int64   `json:"project_id"`
 }
 
 type ContentEntry struct {
-	ID      int64  `json:"id"`
-	Type    string `json:"type"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	ID        int64  `json:"id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	CreatorID int64  `json:"creator_id"`
+	ProjectID int64  `json:"project_id"`
 }
 
 type DetailPermission struct {

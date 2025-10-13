@@ -24,11 +24,12 @@ func RegisterUserRoutes(r *route.RouterGroup) {
 // @Accept json
 // @Produce json
 // @Success 200 {array} internal.User
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/users [get]
 func GetUsers(ctx context.Context, c *app.RequestContext) {
 	users, err := internal.GetUsers(db)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, users)
@@ -41,19 +42,19 @@ func GetUsers(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param user body internal.User true "User"
 // @Success 201 {object} internal.User
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
 // @Router /api/users [post]
 func CreateUser(ctx context.Context, c *app.RequestContext) {
 	var u internal.User
 	if err := c.BindJSON(&u); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	u.Groups = []string{"user"}
 	id, err := internal.CreateUser(db, &u)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	u.ID = id
@@ -67,19 +68,22 @@ func CreateUser(ctx context.Context, c *app.RequestContext) {
 // @Produce json
 // @Param id path int true "User ID"
 // @Success 200 {object} internal.User
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 404 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/users/{id} [get]
 func GetUser(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	u, err := internal.GetUser(db, id)
 	if err != nil {
-		c.JSON(404, map[string]string{"error": err.Error()})
+		c.JSON(404, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, u)
@@ -93,24 +97,27 @@ func GetUser(ctx context.Context, c *app.RequestContext) {
 // @Param id path int true "User ID"
 // @Param user body internal.User true "User"
 // @Success 200 {object} internal.User
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/users/{id} [put]
 func UpdateUser(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	var u internal.User
 	if err := c.BindJSON(&u); err != nil {
-		c.JSON(400, map[string]string{"error": err.Error()})
+		c.JSON(400, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	err = internal.UpdateUser(db, id, &u)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
 	c.JSON(200, u)
@@ -122,21 +129,24 @@ func UpdateUser(ctx context.Context, c *app.RequestContext) {
 // @Accept json
 // @Produce json
 // @Param id path int true "User ID"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} internal.SuccessResponse
+// @Failure 400 {object} internal.ErrorResponse
+// @Failure 401 {object} internal.ErrorResponse
+// @Failure 403 {object} internal.ErrorResponse
+// @Failure 500 {object} internal.ErrorResponse
+// @Security Session
 // @Router /api/users/{id} [delete]
 func DeleteUser(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, map[string]string{"error": "invalid id"})
+		c.JSON(400, internal.NewErrorResponse("invalid id"))
 		return
 	}
 	err = internal.DeleteUser(db, id)
 	if err != nil {
-		c.JSON(500, map[string]string{"error": err.Error()})
+		c.JSON(500, internal.NewErrorResponse(err.Error()))
 		return
 	}
-	c.JSON(200, map[string]string{"message": "deleted"})
+	c.JSON(200, internal.NewSuccessResponse("deleted"))
 }

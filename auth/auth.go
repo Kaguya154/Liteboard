@@ -30,6 +30,7 @@ func LoginRequired() app.HandlerFunc {
 			c.Abort()
 			return
 		}
+		hlog.Debug("User is logged in")
 		c.Next(ctx)
 	}
 }
@@ -208,9 +209,16 @@ func CreateUserInternal(ui *UserInternal) (int64, error) {
 func PermissionCheckMiddleware(contentType string, action string, getID func(*app.RequestContext) (int64, error)) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		sess := sessions.Default(c)
-		userID := sess.Get("user")
-		if userID == nil {
+		userVal := sess.Get("user")
+		if userVal == nil {
 			c.JSON(401, map[string]string{"error": "not logged in"})
+			c.Abort()
+			return
+		}
+
+		user, ok := userVal.(*User)
+		if !ok {
+			c.JSON(500, map[string]string{"error": "invalid user session"})
 			c.Abort()
 			return
 		}
@@ -222,7 +230,7 @@ func PermissionCheckMiddleware(contentType string, action string, getID func(*ap
 				c.Abort()
 				return
 			}
-			hasPerm, err := internal.HasPermission(db, userID.(int64), contentType, id, action)
+			hasPerm, err := internal.HasPermission(db, user.ID, contentType, id, action)
 			if err != nil {
 				c.JSON(500, map[string]string{"error": err.Error()})
 				c.Abort()
