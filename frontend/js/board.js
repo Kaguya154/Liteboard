@@ -99,6 +99,25 @@ const Board = {
             // Load lists
             this.lists = await API.lists.getByProject(this.projectId);
             
+            // Now fetch the actual entry data for each list's items
+            // The backend returns items as an array of IDs, so we need to fetch each entry
+            for (const list of this.lists) {
+                if (list.items && list.items.length > 0) {
+                    // Fetch all entries for this list in parallel
+                    const entryPromises = list.items.map(entryId => 
+                        API.entries.getById(entryId).catch(err => {
+                            console.error(`Failed to fetch entry ${entryId}:`, err);
+                            return null; // Return null for failed entries
+                        })
+                    );
+                    const entries = await Promise.all(entryPromises);
+                    // Filter out any null entries (failed fetches) and store as full objects
+                    list.fullEntries = entries.filter(entry => entry !== null);
+                } else {
+                    list.fullEntries = [];
+                }
+            }
+            
             this.renderBoard();
         } catch (error) {
             this.showError('Failed to load board: ' + error.message);
@@ -128,9 +147,8 @@ const Board = {
      * Render a single list
      */
     renderList(list) {
-        const cards = (list.items || [])
-            .filter(item => item.Entry) // Only show entries, not nested lists
-            .map(item => item.Entry);
+        // Use the fullEntries array that was populated in loadBoard()
+        const cards = list.fullEntries || [];
 
         return `
             <div class="board-list" data-list-id="${list.id}">
@@ -331,7 +349,7 @@ const Board = {
         if (cardId) {
             // Edit existing card
             const list = this.lists.find(l => l.id == listId);
-            const card = list.items.find(item => item.Entry && item.Entry.id == cardId)?.Entry;
+            const card = list.fullEntries.find(entry => entry.id == cardId);
             
             if (card) {
                 document.getElementById('card-id').value = card.id;
@@ -389,10 +407,14 @@ const Board = {
                 // Create new card
                 const newCard = await API.entries.create(cardData);
                 
-                // Add card to list
+                // Add card ID to list's items array
                 const list = this.lists.find(l => l.id == listId);
                 if (list) {
-                    list.items.push({ Entry: newCard });
+                    // items is now an array of IDs, not objects
+                    if (!list.items) {
+                        list.items = [];
+                    }
+                    list.items.push(newCard.id);
                     await API.lists.update(listId, list);
                 }
             }
@@ -416,10 +438,10 @@ const Board = {
         }
 
         try {
-            // Remove from list
+            // Remove from list (items is now an array of IDs)
             const list = this.lists.find(l => l.id == listId);
             if (list) {
-                list.items = list.items.filter(item => !item.Entry || item.Entry.id != cardId);
+                list.items = list.items.filter(id => id != cardId);
                 await API.lists.update(listId, list);
             }
 
@@ -475,18 +497,22 @@ const Board = {
         }
 
         try {
-            // Find the card
+            // Items are now arrays of IDs, not objects
             const sourceList = this.lists.find(l => l.id == sourceListId);
-            const cardItem = sourceList.items.find(item => item.Entry && item.Entry.id == cardId);
+            const cardIdNum = parseInt(cardId);
             
-            if (!cardItem) return;
+            // Check if card exists in source list
+            if (!sourceList.items.includes(cardIdNum)) return;
 
             // Remove from source list
-            sourceList.items = sourceList.items.filter(item => !item.Entry || item.Entry.id != cardId);
+            sourceList.items = sourceList.items.filter(id => id != cardIdNum);
             
             // Add to target list
             const targetList = this.lists.find(l => l.id == targetListId);
-            targetList.items.push(cardItem);
+            if (!targetList.items) {
+                targetList.items = [];
+            }
+            targetList.items.push(cardIdNum);
 
             // Update both lists
             await Promise.all([
