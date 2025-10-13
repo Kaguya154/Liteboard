@@ -71,11 +71,20 @@ func main() {
 	h.Use(sessions.New("user", store))
 
 	r := h.Group("/")
+	
+	// Serve static files
+	r.StaticFS("/css", &app.FS{Root: "./frontend/css"})
+	r.StaticFS("/js", &app.FS{Root: "./frontend/js"})
+	
+	// Serve HTML pages
 	r.GET("/", func(ctx context.Context, c *app.RequestContext) {
-		c.File("./frontend/index/index.html")
+		c.File("./frontend/index.html")
 	})
 	r.GET("/dashboard", auth.LoginRequired(), func(ctx context.Context, c *app.RequestContext) {
-		c.File("./frontend/dashboard.html")
+		c.File("./frontend/dashboard_new.html")
+	})
+	r.GET("/board.html", auth.LoginRequired(), func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/board.html")
 	})
 	// 注册认证路由 (公开)
 	api.RegisterAuthRoutes(r)

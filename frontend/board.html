@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board - Liteboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/dashboard" class="btn btn-icon">← Back</a>
+                <h1 class="header-title" id="project-title">Loading...</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="add-list-btn">+ Add List</button>
+                <a href="/auth/logout" class="btn btn-secondary">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="board-main">
+        <div id="board-container" class="board-container">
+            <div class="loading-spinner">Loading board...</div>
+        </div>
+    </main>
+
+    <!-- Add List Modal -->
+    <div id="list-modal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New List</h3>
+                <button class="modal-close" id="close-list-modal">&times;</button>
+            </div>
+            <form id="list-form">
+                <div class="form-group">
+                    <label for="list-title">List Title</label>
+                    <input type="text" id="list-title" class="form-control" required placeholder="e.g., To Do, In Progress">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-list-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add List</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Card Modal -->
+    <div id="card-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="card-modal-title">Edit Card</h3>
+                <button class="modal-close" id="close-card-modal">&times;</button>
+            </div>
+            <form id="card-form">
+                <input type="hidden" id="card-id">
+                <input type="hidden" id="card-list-id">
+                <div class="form-group">
+                    <label for="card-title">Card Title</label>
+                    <input type="text" id="card-title" class="form-control" required placeholder="Enter card title">
+                </div>
+                <div class="form-group">
+                    <label for="card-content">Description</label>
+                    <textarea id="card-content" class="form-control" rows="6" placeholder="Enter card description"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="delete-card-btn">Delete Card</button>
+                    <div style="flex-grow: 1;"></div>
+                    <button type="button" class="btn btn-secondary" id="cancel-card-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Card</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/board.js"></script>
+</body>
+</html>
