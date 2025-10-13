@@ -1,0 +1,5 @@
+.env
+/liteboard.db
+.idea
+frontend/*.gz
+frontend/index/*.gz
