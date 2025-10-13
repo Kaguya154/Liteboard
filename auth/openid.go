@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Kaguya154/dbhelper"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/hertz-contrib/sessions"
@@ -132,29 +133,63 @@ func GitHubCallbackHandler(ctx context.Context, c *app.RequestContext) {
 	// Create or get user
 	openid := strconv.Itoa(githubUser.ID)
 
-	groups := []string{}
+	groups := []string{"user"} // 默认给所有用户 "user" 组权限
 	// Configure permissions based on user
 	if openid == "92249309" {
-		groups = []string{"admin"}
+		groups = append(groups, "admin") // 特定用户额外添加 "admin" 组
 	}
 	userInternal, err := CreateUserInternalIfNotExist(openid, githubUser.Login, githubUser.Email, groups)
 	if err != nil {
+		hlog.Errorf("Failed to create or get user: %v", err)
 		c.String(500, "Failed to create or get user")
 		return
 	}
 
 	user := NewUserFromInternal(userInternal)
+	hlog.Debugf("User logged in: ID=%d, Username=%s, Groups=%v", user.ID, user.Username, user.Groups)
 	session := sessions.Default(c)
 	session.Set("user", user)
-	session.Save()
+	err = session.Save()
+	if err != nil {
+		hlog.Errorf("Failed to save session: %v", err)
+		c.String(500, "Failed to save session")
+		return
+	}
 
 	c.Redirect(302, []byte("/dashboard")) // Redirect to home
 }
 
 func CreateUserInternalIfNotExist(openid, username, email string, groups []string) (*UserInternal, error) {
+	hlog.Debugf("CreateUserInternalIfNotExist: openid=%s, username=%s, groups=%v", openid, username, groups)
+
 	u, err := GetUserInternalByOpenID(openid)
 	if err == nil {
+		// 用户已存在，更新组权限
+		hlog.Debugf("User exists with ID=%d, updating groups from %v to %v", u.ID, u.Groups, groups)
+		u.Groups = groups
+
+		// 更新数据库中的 groups 字段
+		groupsJson, err := json.Marshal(groups)
+		if err != nil {
+			hlog.Errorf("Failed to marshal groups: %v", err)
+			return nil, err
+		}
+
+		cond := dbhelper.Cond().Eq("id", u.ID).Build()
+		upd := dbhelper.Cond().Eq("groups", string(groupsJson)).Build()
+		_, err = db.Update("user", cond, upd)
+		if err != nil {
+			hlog.Errorf("Failed to update user groups: %v", err)
+			return nil, err
+		}
+		hlog.Debugf("Successfully updated user groups for ID=%d", u.ID)
 		return u, nil
+	}
+
+	hlog.Debugf("User not found, creating new user")
+	groupsJson, err := json.Marshal(groups)
+	if err != nil {
+		return nil, err
 	}
 
 	ui := &UserInternal{
@@ -164,10 +199,21 @@ func CreateUserInternalIfNotExist(openid, username, email string, groups []strin
 		PasswordHash: "",
 		Groups:       groups,
 	}
-	id, err := CreateUserInternal(ui)
+
+	cond := dbhelper.Cond().
+		Eq("username", username).
+		Eq("email", email).
+		Eq("openid", openid).
+		Eq("password_hash", "").
+		Eq("groups", string(groupsJson)).
+		Build()
+
+	id, err := db.Insert("user", cond)
 	if err != nil {
+		hlog.Errorf("Failed to create user: %v", err)
 		return nil, err
 	}
 	ui.ID = id
+	hlog.Debugf("Successfully created user with ID=%d", id)
 	return ui, nil
 }

@@ -7,7 +7,9 @@ import (
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/route"
+	"github.com/hertz-contrib/sessions"
 )
 
 func RegisterContentRoutes(r *route.RouterGroup) {
@@ -62,17 +64,67 @@ func GetContentLists(ctx context.Context, c *app.RequestContext) {
 // @Failure 500 {object} map[string]string
 // @Router /api/content_lists [post]
 func CreateContentList(ctx context.Context, c *app.RequestContext) {
+	hlog.Debug("CreateContentList: Starting request")
+	sess := sessions.Default(c)
+	userVal := sess.Get("user")
+
+	if userVal == nil {
+		hlog.Debug("CreateContentList: user not in session")
+		c.JSON(401, map[string]string{"error": "not logged in"})
+		return
+	}
+	user, ok := userVal.(*auth.User)
+	if !ok {
+		hlog.Errorf("CreateContentList: invalid user session type, got %T", userVal)
+		c.JSON(500, map[string]string{"error": "invalid user session"})
+		return
+	}
+
 	var cl internal.ContentList
 	if err := c.BindJSON(&cl); err != nil {
+		hlog.Errorf("CreateContentList: BindJSON failed, error=%v", err)
 		c.JSON(400, map[string]string{"error": err.Error()})
 		return
 	}
+
+	cl.CreatorID = user.ID
 	id, err := internal.CreateContentList(db, &cl)
 	if err != nil {
+		hlog.Errorf("CreateContentList: CreateContentList failed, error=%v", err)
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
 	cl.ID = id
+
+	// Give admin permission to creator
+	dp := internal.DetailPermission{
+		UserID:      cl.CreatorID,
+		ContentType: "content_list",
+		ContentIDs:  []int64{cl.ID},
+		Action:      "admin",
+	}
+	_, err = internal.CreateDetailPermission(db, &dp)
+	if err != nil {
+		hlog.Errorf("CreateContentList: CreateDetailPermission(admin) failed, error=%v", err)
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Also give read permission
+	dpRead := internal.DetailPermission{
+		UserID:      cl.CreatorID,
+		ContentType: "content_list",
+		ContentIDs:  []int64{cl.ID},
+		Action:      "read",
+	}
+	_, err = internal.CreateDetailPermission(db, &dpRead)
+	if err != nil {
+		hlog.Errorf("CreateContentList: CreateDetailPermission(read) failed, error=%v", err)
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+
+	hlog.Debugf("CreateContentList: successfully created content list ID=%d", cl.ID)
 	c.JSON(201, cl)
 }
 
@@ -184,17 +236,67 @@ func GetContentEntries(ctx context.Context, c *app.RequestContext) {
 // @Failure 500 {object} map[string]string
 // @Router /api/content_entries [post]
 func CreateContentEntry(ctx context.Context, c *app.RequestContext) {
+	hlog.Debug("CreateContentEntry: Starting request")
+	sess := sessions.Default(c)
+	userVal := sess.Get("user")
+
+	if userVal == nil {
+		hlog.Debug("CreateContentEntry: user not in session")
+		c.JSON(401, map[string]string{"error": "not logged in"})
+		return
+	}
+	user, ok := userVal.(*auth.User)
+	if !ok {
+		hlog.Errorf("CreateContentEntry: invalid user session type, got %T", userVal)
+		c.JSON(500, map[string]string{"error": "invalid user session"})
+		return
+	}
+
 	var ce internal.ContentEntry
 	if err := c.BindJSON(&ce); err != nil {
+		hlog.Errorf("CreateContentEntry: BindJSON failed, error=%v", err)
 		c.JSON(400, map[string]string{"error": err.Error()})
 		return
 	}
+
+	ce.CreatorID = user.ID
 	id, err := internal.CreateContentEntry(db, &ce)
 	if err != nil {
+		hlog.Errorf("CreateContentEntry: CreateContentEntry failed, error=%v", err)
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
 	ce.ID = id
+
+	// Give admin permission to creator
+	dp := internal.DetailPermission{
+		UserID:      ce.CreatorID,
+		ContentType: "content_entry",
+		ContentIDs:  []int64{ce.ID},
+		Action:      "admin",
+	}
+	_, err = internal.CreateDetailPermission(db, &dp)
+	if err != nil {
+		hlog.Errorf("CreateContentEntry: CreateDetailPermission(admin) failed, error=%v", err)
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Also give read permission
+	dpRead := internal.DetailPermission{
+		UserID:      ce.CreatorID,
+		ContentType: "content_entry",
+		ContentIDs:  []int64{ce.ID},
+		Action:      "read",
+	}
+	_, err = internal.CreateDetailPermission(db, &dpRead)
+	if err != nil {
+		hlog.Errorf("CreateContentEntry: CreateDetailPermission(read) failed, error=%v", err)
+		c.JSON(500, map[string]string{"error": err.Error()})
+		return
+	}
+
+	hlog.Debugf("CreateContentEntry: successfully created content entry ID=%d", ce.ID)
 	c.JSON(201, ce)
 }
 

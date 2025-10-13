@@ -5,6 +5,7 @@ import (
 
 	"github.com/Kaguya154/dbhelper"
 	"github.com/Kaguya154/dbhelper/types"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 )
 
 const (
@@ -60,35 +61,47 @@ func HasPermission(db types.Conn, userID int64, contentType string, contentID in
 }
 
 func GetProjectsForUser(db types.Conn, userID int64) ([]Project, error) {
+	hlog.Debugf("GetProjectsForUser: Starting for userID=%d", userID)
+
 	// Get all projects where user has at least read permission
 	cond := dbhelper.Cond().Eq("user_id", userID).Eq("content_type", "project").Build()
+
 	rows, err := db.Query("detail_permission", cond)
 	if err != nil {
-		return nil, err
+		hlog.Errorf("GetProjectsForUser: Query failed, error=%v", err)
+		return []Project{}, err
 	}
 
 	projectIDs := make(map[int64]bool)
 	for _, data := range rows.All() {
 		action := data["action"].(string)
+
 		if getPermissionLevel(action) >= PermissionRead {
 			contentIDsJson := data["content_ids"].(string)
+
 			var contentIDs []int64
-			json.Unmarshal([]byte(contentIDsJson), &contentIDs)
+			err := json.Unmarshal([]byte(contentIDsJson), &contentIDs)
+			if err != nil {
+				continue
+			}
+
 			for _, id := range contentIDs {
 				projectIDs[id] = true
 			}
 		}
 	}
 
-	var projects []Project
+	projects := make([]Project, 0) // 初始化为空数组而不是 nil
 	for id := range projectIDs {
 		p, err := GetProject(db, id)
 		if err != nil {
+			hlog.Errorf("GetProjectsForUser: Failed to get project ID=%d, error=%v", id, err)
 			continue // skip if not found
 		}
 		projects = append(projects, *p)
 	}
 
+	hlog.Debugf("GetProjectsForUser: Returning %d projects for userID=%d", len(projects), userID)
 	return projects, nil
 }
 
@@ -96,10 +109,10 @@ func GetContentListsForProject(db types.Conn, projectID int64) ([]ContentList, e
 	cond := dbhelper.Cond().Eq("project_id", projectID).Build()
 	rows, err := db.Query("content_list", cond)
 	if err != nil {
-		return nil, err
+		return []ContentList{}, err
 	}
 
-	var lists []ContentList
+	lists := make([]ContentList, 0)
 	for _, data := range rows.All() {
 		list := ContentList{
 			ID:    data["id"].(int64),

@@ -104,18 +104,21 @@ func (ci *ContentItem) UnmarshalJSON(data []byte) error {
 }
 
 type ContentList struct {
-	ID        int64         `json:"id"`
-	Type      string        `json:"type"`
-	Title     string        `json:"title"`
-	Items     []ContentItem `json:"items"`
-	ProjectID int64         `json:"project_id"`
+	ID        int64   `json:"id"`
+	Type      string  `json:"type"`
+	Title     string  `json:"title"`
+	Items     []int64 `json:"items"` // 存储 content entry 的 ID
+	CreatorID int64   `json:"creator_id"`
+	ProjectID int64   `json:"project_id"`
 }
 
 type ContentEntry struct {
-	ID      int64  `json:"id"`
-	Type    string `json:"type"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	ID        int64  `json:"id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	CreatorID int64  `json:"creator_id"`
+	ProjectID int64  `json:"project_id"`
 }
 
 type DetailPermission struct {

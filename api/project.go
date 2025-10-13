@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/route"
 	"github.com/hertz-contrib/sessions"
 )
@@ -33,17 +34,31 @@ func RegisterProjectRoutes(r *route.RouterGroup) {
 // @Success 200 {array} internal.Project
 // @Router /api/projects [get]
 func GetProjects(ctx context.Context, c *app.RequestContext) {
+	hlog.Debug("GetProjects: Starting request")
 	sess := sessions.Default(c)
-	userID := sess.Get("user")
-	if userID == nil {
+	userVal := sess.Get("user")
+	hlog.Debugf("GetProjects: userVal type=%T, value=%v", userVal, userVal)
+
+	if userVal == nil {
+		hlog.Debug("GetProjects: user not in session")
 		c.JSON(401, map[string]string{"error": "not logged in"})
 		return
 	}
-	projects, err := internal.GetProjectsForUser(db, userID.(int64))
+	user, ok := userVal.(*auth.User)
+	if !ok {
+		hlog.Errorf("GetProjects: invalid user session type, got %T", userVal)
+		c.JSON(500, map[string]string{"error": "invalid user session"})
+		return
+	}
+	hlog.Debugf("GetProjects: user authenticated, ID=%d, Username=%s", user.ID, user.Username)
+
+	projects, err := internal.GetProjectsForUser(db, user.ID)
 	if err != nil {
+		hlog.Errorf("GetProjects: GetProjectsForUser failed, userID=%d, error=%v", user.ID, err)
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
+	hlog.Debugf("GetProjects: successfully retrieved %d projects for user %d", len(projects), user.ID)
 	c.JSON(200, projects)
 }
 
@@ -58,24 +73,41 @@ func GetProjects(ctx context.Context, c *app.RequestContext) {
 // @Failure 500 {object} map[string]string
 // @Router /api/projects [post]
 func CreateProject(ctx context.Context, c *app.RequestContext) {
+	hlog.Debug("CreateProject: Starting request")
 	sess := sessions.Default(c)
-	userID := sess.Get("user")
-	if userID == nil {
+	userVal := sess.Get("user")
+
+	if userVal == nil {
+		hlog.Debug("CreateProject: user not in session")
 		c.JSON(401, map[string]string{"error": "not logged in"})
 		return
 	}
+	user, ok := userVal.(*auth.User)
+	if !ok {
+		hlog.Errorf("CreateProject: invalid user session type, got %T", userVal)
+		c.JSON(500, map[string]string{"error": "invalid user session"})
+		return
+	}
+	hlog.Debugf("CreateProject: user authenticated, ID=%d, Username=%s", user.ID, user.Username)
+
 	var p internal.Project
 	if err := c.BindJSON(&p); err != nil {
+		hlog.Errorf("CreateProject: BindJSON failed, error=%v", err)
 		c.JSON(400, map[string]string{"error": err.Error()})
 		return
 	}
-	p.CreatorID = userID.(int64)
+	hlog.Debugf("CreateProject: project data bound, Name=%s", p.Name)
+
+	p.CreatorID = user.ID
 	id, err := internal.CreateProject(db, &p)
 	if err != nil {
+		hlog.Errorf("CreateProject: CreateProject failed, error=%v", err)
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
 	p.ID = id
+	hlog.Debugf("CreateProject: project created with ID=%d", id)
+
 	// Give admin permission to creator
 	dp := internal.DetailPermission{
 		UserID:      p.CreatorID,
@@ -85,9 +117,12 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 	}
 	_, err = internal.CreateDetailPermission(db, &dp)
 	if err != nil {
+		hlog.Errorf("CreateProject: CreateDetailPermission(admin) failed, error=%v", err)
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
+	hlog.Debug("CreateProject: admin permission created")
+
 	// Also give read permission
 	dpRead := internal.DetailPermission{
 		UserID:      p.CreatorID,
@@ -97,9 +132,12 @@ func CreateProject(ctx context.Context, c *app.RequestContext) {
 	}
 	_, err = internal.CreateDetailPermission(db, &dpRead)
 	if err != nil {
+		hlog.Errorf("CreateProject: CreateDetailPermission(read) failed, error=%v", err)
 		c.JSON(500, map[string]string{"error": err.Error()})
 		return
 	}
+	hlog.Debug("CreateProject: read permission created")
+	hlog.Debugf("CreateProject: successfully created project ID=%d", p.ID)
 	c.JSON(201, p)
 }
 
