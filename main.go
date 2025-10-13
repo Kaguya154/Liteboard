@@ -71,7 +71,7 @@ func main() {
 	h.Use(sessions.New("user", store))
 
 	r := h.Group("/")
-	
+
 	// Serve static files
 	r.GET("/css/styles.css", func(ctx context.Context, c *app.RequestContext) {
 		c.File("./frontend/css/styles.css")
@@ -91,6 +91,14 @@ func main() {
 	
 	// Serve HTML pages
 	r.GET("/", func(ctx context.Context, c *app.RequestContext) {
+		//如果已登录，跳转到/dashboard
+		sess := sessions.Default(c)
+		user := sess.Get("user")
+		if user != nil {
+			c.Redirect(302, []byte("/dashboard"))
+			return
+		}
+		//否则显示首页
 		c.File("./frontend/index.html")
 	})
 	r.GET("/dashboard", auth.LoginRequired(), func(ctx context.Context, c *app.RequestContext) {

@@ -148,7 +148,7 @@ func GitHubCallbackHandler(ctx context.Context, c *app.RequestContext) {
 	session.Set("user", user)
 	session.Save()
 
-	c.Redirect(302, []byte("/")) // Redirect to home
+	c.Redirect(302, []byte("/dashboard")) // Redirect to home
 }
 
 func CreateUserInternalIfNotExist(openid, username, email string, groups []string) (*UserInternal, error) {
