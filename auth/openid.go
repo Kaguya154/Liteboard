@@ -120,9 +120,10 @@ func GitHubCallbackHandler(ctx context.Context, c *app.RequestContext) {
 	}
 
 	var githubUser struct {
-		ID    int    `json:"id"`
-		Login string `json:"login"`
-		Email string `json:"email"`
+		ID        int    `json:"id"`
+		Login     string `json:"login"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
 	}
 	err = json.Unmarshal(userBody, &githubUser)
 	if err != nil {
@@ -138,7 +139,7 @@ func GitHubCallbackHandler(ctx context.Context, c *app.RequestContext) {
 	if openid == "92249309" {
 		groups = append(groups, "admin") // 特定用户额外添加 "admin" 组
 	}
-	userInternal, err := CreateUserInternalIfNotExist(openid, githubUser.Login, githubUser.Email, groups)
+	userInternal, err := CreateUserInternalIfNotExist(openid, githubUser.Login, githubUser.Email, githubUser.AvatarURL, groups)
 	if err != nil {
 		hlog.Errorf("Failed to create or get user: %v", err)
 		c.String(500, "Failed to create or get user")
@@ -159,16 +160,17 @@ func GitHubCallbackHandler(ctx context.Context, c *app.RequestContext) {
 	c.Redirect(302, []byte("/dashboard")) // Redirect to home
 }
 
-func CreateUserInternalIfNotExist(openid, username, email string, groups []string) (*UserInternal, error) {
+func CreateUserInternalIfNotExist(openid, username, email, avatarURL string, groups []string) (*UserInternal, error) {
 	hlog.Debugf("CreateUserInternalIfNotExist: openid=%s, username=%s, groups=%v", openid, username, groups)
 
 	u, err := GetUserInternalByOpenID(openid)
 	if err == nil {
-		// 用户已存在，更新组权限
+		// 用户已存在，更新组权限和头像
 		hlog.Debugf("User exists with ID=%d, updating groups from %v to %v", u.ID, u.Groups, groups)
 		u.Groups = groups
+		u.AvatarURL = avatarURL
 
-		// 更新数据库中的 groups 字段
+		// 更新数据库中的 groups 和 avatar_url 字段
 		groupsJson, err := json.Marshal(groups)
 		if err != nil {
 			hlog.Errorf("Failed to marshal groups: %v", err)
@@ -176,13 +178,13 @@ func CreateUserInternalIfNotExist(openid, username, email string, groups []strin
 		}
 
 		cond := dbhelper.Cond().Eq("id", u.ID).Build()
-		upd := dbhelper.Cond().Eq("groups", string(groupsJson)).Build()
+		upd := dbhelper.Cond().Eq("groups", string(groupsJson)).Eq("avatar_url", avatarURL).Build()
 		_, err = db.Update("user", cond, upd)
 		if err != nil {
 			hlog.Errorf("Failed to update user groups: %v", err)
 			return nil, err
 		}
-		hlog.Debugf("Successfully updated user groups for ID=%d", u.ID)
+		hlog.Debugf("Successfully updated user groups and avatar for ID=%d", u.ID)
 		return u, nil
 	}
 
@@ -198,6 +200,7 @@ func CreateUserInternalIfNotExist(openid, username, email string, groups []strin
 		OpenID:       openid,
 		PasswordHash: "",
 		Groups:       groups,
+		AvatarURL:    avatarURL,
 	}
 
 	cond := dbhelper.Cond().
@@ -206,6 +209,7 @@ func CreateUserInternalIfNotExist(openid, username, email string, groups []strin
 		Eq("openid", openid).
 		Eq("password_hash", "").
 		Eq("groups", string(groupsJson)).
+		Eq("avatar_url", avatarURL).
 		Build()
 
 	id, err := db.Insert("user", cond)

@@ -97,10 +97,11 @@ func GetUserFromSession(c *app.RequestContext) *User {
 }
 
 type User struct {
-	ID       int64    `json:"id"`
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Groups   []string `json:"groups"`
+	ID        int64    `json:"id"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email"`
+	Groups    []string `json:"groups"`
+	AvatarURL string   `json:"avatar_url,omitempty"`
 }
 
 type UserInternal struct {
@@ -110,6 +111,7 @@ type UserInternal struct {
 	OpenID       string
 	PasswordHash string
 	Groups       []string
+	AvatarURL    string
 }
 
 func NewUser(userinfo map[string]interface{}) *User {
@@ -143,10 +145,11 @@ func NewUser(userinfo map[string]interface{}) *User {
 
 func NewUserFromInternal(userInternal *UserInternal) *User {
 	return &User{
-		ID:       userInternal.ID,
-		Username: userInternal.Username,
-		Email:    userInternal.Email,
-		Groups:   userInternal.Groups,
+		ID:        userInternal.ID,
+		Username:  userInternal.Username,
+		Email:     userInternal.Email,
+		Groups:    userInternal.Groups,
+		AvatarURL: userInternal.AvatarURL,
 	}
 }
 
@@ -166,6 +169,9 @@ func GetUserInternalByOpenID(openid string) (*UserInternal, error) {
 		Email:        data["email"].(string),
 		OpenID:       data["openid"].(string),
 		PasswordHash: data["password_hash"].(string),
+	}
+	if data["avatar_url"] != nil {
+		u.AvatarURL = data["avatar_url"].(string)
 	}
 	return u, nil
 }
@@ -193,6 +199,9 @@ func GetUserInternalByID(id int64) (*UserInternal, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	if data["avatar_url"] != nil {
+		u.AvatarURL = data["avatar_url"].(string)
 	}
 	return u, nil
 }
