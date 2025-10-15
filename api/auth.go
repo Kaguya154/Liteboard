@@ -40,6 +40,32 @@ func Logout(ctx context.Context, c *app.RequestContext) {
 	c.JSON(200, internal.NewSuccessResponse("logged out"))
 }
 
+// GetUserProfile @Summary Get user profile
+// @Description Get current logged in user profile
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} auth.User
+// @Failure 401 {object} internal.ErrorResponse
+// @Security Session
+// @Router /api/user/profile [get]
+func GetUserProfile(ctx context.Context, c *app.RequestContext) {
+	sess := sessions.Default(c)
+	userVal := sess.Get("user")
+	if userVal == nil {
+		c.JSON(401, internal.NewErrorResponse("not logged in"))
+		return
+	}
+
+	user, ok := userVal.(*auth.User)
+	if !ok {
+		c.JSON(500, internal.NewErrorResponse("invalid user session"))
+		return
+	}
+
+	c.JSON(200, user)
+}
+
 // RegisterAuthRoutes 注册认证路由
 func RegisterAuthRoutes(h *route.RouterGroup) {
 	authGroup := h.Group("/auth")

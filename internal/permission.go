@@ -28,6 +28,11 @@ func getPermissionLevel(action string) int {
 	}
 }
 
+// GetPermissionLevel is the exported version of getPermissionLevel
+func GetPermissionLevel(action string) int {
+	return getPermissionLevel(action)
+}
+
 func HasPermission(db types.Conn, userID int64, contentType string, contentID int64, requiredAction string) (bool, error) {
 	requiredLevel := getPermissionLevel(requiredAction)
 	if requiredLevel == PermissionNone {

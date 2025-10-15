@@ -639,3 +639,64 @@ func GetContentEntries(db types.Conn) ([]ContentEntry, error) {
 	}
 	return entries, nil
 }
+
+// ShareToken CRUD
+
+func CreateShareToken(db types.Conn, st *ShareToken) (int64, error) {
+	cond := dbhelper.Cond().
+		Eq("token", st.Token).
+		Eq("project_id", st.ProjectID).
+		Eq("permission_level", st.PermissionLevel).
+		Eq("created_at", st.CreatedAt).
+		Eq("expires_at", st.ExpiresAt).
+		Build()
+	return db.Insert("share_token", cond)
+}
+
+func GetShareToken(db types.Conn, token string) (*ShareToken, error) {
+	cond := dbhelper.Cond().Eq("token", token).Build()
+	rows, err := db.Query("share_token", cond)
+	if err != nil {
+		return nil, err
+	}
+	if rows.Count() == 0 {
+		return nil, errors.New("share token not found")
+	}
+	data := rows.All()[0]
+	st := &ShareToken{
+		ID:              data["id"].(int64),
+		Token:           data["token"].(string),
+		ProjectID:       data["project_id"].(int64),
+		PermissionLevel: data["permission_level"].(string),
+		CreatedAt:       data["created_at"].(int64),
+		ExpiresAt:       data["expires_at"].(int64),
+	}
+	return st, nil
+}
+
+func DeleteShareToken(db types.Conn, id int64) error {
+	cond := dbhelper.Cond().Eq("id", id).Build()
+	_, err := db.Delete("share_token", cond)
+	return err
+}
+
+func GetShareTokensByProjectID(db types.Conn, projectID int64) ([]ShareToken, error) {
+	cond := dbhelper.Cond().Eq("project_id", projectID).Build()
+	rows, err := db.Query("share_token", cond)
+	if err != nil {
+		return []ShareToken{}, err
+	}
+	tokens := make([]ShareToken, 0)
+	for _, data := range rows.All() {
+		st := ShareToken{
+			ID:              data["id"].(int64),
+			Token:           data["token"].(string),
+			ProjectID:       data["project_id"].(int64),
+			PermissionLevel: data["permission_level"].(string),
+			CreatedAt:       data["created_at"].(int64),
+			ExpiresAt:       data["expires_at"].(int64),
+		}
+		tokens = append(tokens, st)
+	}
+	return tokens, nil
+}

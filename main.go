@@ -49,7 +49,7 @@ func main() {
 	hlog.Debug("Creating database tables")
 	tables := []string{
 		"CREATE TABLE IF NOT EXISTS project (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, creator_id INTEGER)",
-		"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, email TEXT, openid TEXT, password_hash TEXT, groups TEXT)",
+		"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, email TEXT, openid TEXT, password_hash TEXT, groups TEXT, avatar_url TEXT)",
 		"CREATE TABLE IF NOT EXISTS page (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, author_id INTEGER)",
 		"CREATE TABLE IF NOT EXISTS sidebar (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT)",
 		"CREATE TABLE IF NOT EXISTS sidebar_item (id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER, name TEXT, icon TEXT, url TEXT, order_num INTEGER)",
@@ -58,6 +58,7 @@ func main() {
 		"CREATE TABLE IF NOT EXISTS detail_permission (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, content_type TEXT, content_ids TEXT, action TEXT)",
 		"CREATE TABLE IF NOT EXISTS permission (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, content_type TEXT, action TEXT, detail INTEGER)",
 		"CREATE TABLE IF NOT EXISTS role (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, description TEXT, permissions TEXT)",
+		"CREATE TABLE IF NOT EXISTS share_token (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE, project_id INTEGER, permission_level TEXT, created_at INTEGER, expires_at INTEGER)",
 	}
 
 	for _, sql := range tables {
@@ -114,6 +115,9 @@ func main() {
 	r.GET("/board.html", auth.LoginRequired(), func(ctx context.Context, c *app.RequestContext) {
 		c.File("./frontend/board.html")
 	})
+	r.GET("/share", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/share.html")
+	})
 	// 注册认证路由 (公开)
 	api.RegisterAuthRoutes(r)
 
@@ -126,6 +130,10 @@ func main() {
 	api.RegisterPermissionRoutes(apiRoute)
 	api.RegisterProjectRoutes(apiRoute)
 	api.RegisterUserRoutes(apiRoute)
+	api.RegisterShareRoutes(apiRoute)
+
+	// User profile endpoint (requires login only, no permission check)
+	apiRoute.GET("/user/profile", api.GetUserProfile)
 
 	// 404 handler
 	h.NoRoute(func(ctx context.Context, c *app.RequestContext) {

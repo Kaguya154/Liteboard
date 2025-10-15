@@ -157,5 +157,65 @@ const API = {
                 window.location.href = '/';
             }
         },
+        
+        async getProfile() {
+            return API.request('/api/user/profile');
+        },
+    },
+
+    /**
+     * Permission Management API
+     */
+    permissions: {
+        async getProjectPermissions(projectId) {
+            return API.request(`/api/projects/${projectId}/permissions`);
+        },
+
+        async addProjectPermission(projectId, userId, permissionLevel) {
+            return API.request(`/api/projects/${projectId}/permissions`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: userId,
+                    permission_level: permissionLevel,
+                }),
+            });
+        },
+
+        async removeProjectPermission(projectId, userId) {
+            return API.request(`/api/projects/${projectId}/permissions/${userId}`, {
+                method: 'DELETE',
+            });
+        },
+    },
+
+    /**
+     * Share Token API
+     */
+    share: {
+        async generateToken(projectId, permissionLevel, expiresInHours = 24) {
+            return API.request(`/api/projects/${projectId}/share`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    permission_level: permissionLevel,
+                    expires_in_hours: expiresInHours,
+                }),
+            });
+        },
+
+        async getProjectTokens(projectId) {
+            return API.request(`/api/projects/${projectId}/shares`);
+        },
+
+        async deleteToken(tokenId) {
+            return API.request(`/api/shares/${tokenId}`, {
+                method: 'DELETE',
+            });
+        },
+
+        async joinViaToken(token) {
+            return API.request(`/api/share/${token}/join`, {
+                method: 'POST',
+            });
+        },
     },
 };

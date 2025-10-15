@@ -46,10 +46,11 @@ type Project struct {
 }
 
 type User struct {
-	ID       int64    `json:"id"`
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Groups   []string `json:"groups"`
+	ID        int64    `json:"id"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email"`
+	Groups    []string `json:"groups"`
+	AvatarURL string   `json:"avatar_url,omitempty"`
 }
 
 type UserInternal struct {
@@ -59,6 +60,7 @@ type UserInternal struct {
 	OpenID       string
 	PasswordHash string
 	Groups       []string
+	AvatarURL    string
 }
 
 type Sidebar struct {
@@ -176,4 +178,20 @@ type Role struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Permissions []int64 `json:"permissions"`
+}
+
+type ShareToken struct {
+	ID              int64  `json:"id"`
+	Token           string `json:"token"`
+	ProjectID       int64  `json:"project_id"`
+	PermissionLevel string `json:"permission_level"`
+	CreatedAt       int64  `json:"created_at"`
+	ExpiresAt       int64  `json:"expires_at"`
+}
+
+type ProjectPermission struct {
+	UserID          int64  `json:"user_id"`
+	Username        string `json:"username"`
+	Email           string `json:"email"`
+	PermissionLevel string `json:"permission_level"`
 }
