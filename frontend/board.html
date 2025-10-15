@@ -15,6 +15,8 @@
             </div>
             <div class="header-actions">
                 <button class="btn btn-primary" id="add-list-btn">+ Add List</button>
+                <button class="btn btn-secondary" id="manage-permissions-btn">👥 Manage Access</button>
+                <button class="btn btn-secondary" id="share-project-btn">🔗 Share</button>
                 <a href="/auth/logout" class="btn btn-secondary">Logout</a>
             </div>
         </div>
@@ -71,6 +73,59 @@
                     <button type="submit" class="btn btn-primary">Save Card</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Permission Management Modal -->
+    <div id="permission-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Project Access</h3>
+                <button class="modal-close" id="close-permission-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="add-user-id">Add User by ID</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="number" id="add-user-id" class="form-control" placeholder="Enter user ID">
+                        <select id="add-permission-level" class="form-control" style="width: auto;">
+                            <option value="read">Read</option>
+                            <option value="write">Write</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <button type="button" class="btn btn-primary" id="add-permission-btn">Add</button>
+                    </div>
+                </div>
+                <div id="permissions-list-container">
+                    <div class="loading-spinner">Loading permissions...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Share Project</h3>
+                <button class="modal-close" id="close-share-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Generate New Share Link</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <select id="share-permission-level" class="form-control" style="width: auto;">
+                            <option value="read">Read Only</option>
+                            <option value="write">Read & Write</option>
+                        </select>
+                        <input type="number" id="share-expires-hours" class="form-control" placeholder="Hours" value="24" min="1" style="width: 100px;">
+                        <button type="button" class="btn btn-primary" id="generate-share-btn">Generate Link</button>
+                    </div>
+                </div>
+                <div id="share-tokens-container">
+                    <div class="loading-spinner">Loading share links...</div>
+                </div>
+            </div>
         </div>
     </div>
 

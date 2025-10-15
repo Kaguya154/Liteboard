@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Project - Liteboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container" style="max-width: 600px; margin: 4rem auto; padding: 2rem;">
+        <div class="share-join-container" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h1 style="text-align: center; margin-bottom: 2rem;">📋 Join Project</h1>
+            <div id="share-status" style="text-align: center;">
+                <div class="loading-spinner">Processing invitation...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        async function joinProject() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const statusDiv = document.getElementById('share-status');
+
+            if (!token) {
+                statusDiv.innerHTML = `
+                    <div class="empty-state-icon">⚠️</div>
+                    <div class="empty-state-text">Invalid invitation link</div>
+                    <div class="empty-state-subtext">The invitation link is missing or invalid.</div>
+                    <a href="/" class="btn btn-primary" style="margin-top: 1rem;">Go to Home</a>
+                `;
+                return;
+            }
+
+            try {
+                const result = await API.share.joinViaToken(token);
+                statusDiv.innerHTML = `
+                    <div class="empty-state-icon">✅</div>
+                    <div class="empty-state-text">Successfully joined project!</div>
+                    <div class="empty-state-subtext">You now have access to the project.</div>
+                    <a href="/board.html?project=${result.data.project_id}" class="btn btn-primary" style="margin-top: 1rem;">Go to Project</a>
+                `;
+            } catch (error) {
+                let errorMessage = error.message;
+                if (error.message.includes('not logged in')) {
+                    statusDiv.innerHTML = `
+                        <div class="empty-state-icon">🔒</div>
+                        <div class="empty-state-text">Login Required</div>
+                        <div class="empty-state-subtext">Please login to join this project.</div>
+                        <a href="/auth/login" class="btn btn-primary" style="margin-top: 1rem;">Login</a>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="empty-state-icon">❌</div>
+                        <div class="empty-state-text">Failed to join project</div>
+                        <div class="empty-state-subtext">${errorMessage}</div>
+                        <a href="/" class="btn btn-primary" style="margin-top: 1rem;">Go to Home</a>
+                    `;
+                }
+            }
+        }
+
+        // Run when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', joinProject);
+        } else {
+            joinProject();
+        }
+    </script>
+</body>
+</html>

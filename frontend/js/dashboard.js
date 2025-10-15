@@ -22,7 +22,70 @@ const Dashboard = {
     async init() {
         this.cacheDOMElements();
         this.attachEventListeners();
+        await this.loadUserProfile();
         await this.loadProjects();
+    },
+
+    /**
+     * Load and display user profile
+     */
+    async loadUserProfile() {
+        try {
+            const user = await API.auth.getProfile();
+            this.renderUserAvatar(user);
+        } catch (error) {
+            console.error('Failed to load user profile:', error);
+        }
+    },
+
+    /**
+     * Render user avatar in header
+     */
+    renderUserAvatar(user) {
+        const container = document.getElementById('user-avatar-container');
+        if (!container) return;
+
+        const avatarHTML = user.avatar_url 
+            ? `<img src="${user.avatar_url}" alt="${user.username}" class="user-avatar" />`
+            : `<div class="user-avatar-fallback">${user.username.charAt(0).toUpperCase()}</div>`;
+
+        const tooltipHTML = `
+            <div class="user-tooltip" id="user-tooltip">
+                <div class="user-tooltip-name">${this.escapeHtml(user.username)}</div>
+                <div class="user-tooltip-id">ID: ${user.id}</div>
+            </div>
+        `;
+
+        container.innerHTML = avatarHTML + tooltipHTML;
+
+        // Add hover event for tooltip
+        const avatarElement = container.querySelector('.user-avatar, .user-avatar-fallback');
+        const tooltip = document.getElementById('user-tooltip');
+        
+        if (avatarElement && tooltip) {
+            let hideTimeout;
+            
+            avatarElement.addEventListener('mouseenter', () => {
+                clearTimeout(hideTimeout);
+                tooltip.classList.add('show');
+            });
+
+            avatarElement.addEventListener('mouseleave', () => {
+                hideTimeout = setTimeout(() => {
+                    tooltip.classList.remove('show');
+                }, 200);
+            });
+
+            tooltip.addEventListener('mouseenter', () => {
+                clearTimeout(hideTimeout);
+            });
+
+            tooltip.addEventListener('mouseleave', () => {
+                hideTimeout = setTimeout(() => {
+                    tooltip.classList.remove('show');
+                }, 200);
+            });
+        }
     },
 
     /**

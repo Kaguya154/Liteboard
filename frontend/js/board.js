@@ -83,6 +83,46 @@ const Board = {
         // Form submissions
         this.elements.listForm.addEventListener('submit', (e) => this.handleListFormSubmit(e));
         this.elements.cardForm.addEventListener('submit', (e) => this.handleCardFormSubmit(e));
+
+        // Permission management
+        const permBtn = document.getElementById('manage-permissions-btn');
+        if (permBtn) {
+            permBtn.addEventListener('click', () => this.openPermissionModal());
+        }
+        const closePermModal = document.getElementById('close-permission-modal');
+        if (closePermModal) {
+            closePermModal.addEventListener('click', () => this.closePermissionModal());
+        }
+        const permModal = document.getElementById('permission-modal');
+        if (permModal) {
+            permModal.addEventListener('click', (e) => {
+                if (e.target === permModal) this.closePermissionModal();
+            });
+        }
+        const addPermBtn = document.getElementById('add-permission-btn');
+        if (addPermBtn) {
+            addPermBtn.addEventListener('click', () => this.addPermission());
+        }
+
+        // Share management
+        const shareBtn = document.getElementById('share-project-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => this.openShareModal());
+        }
+        const closeShareModal = document.getElementById('close-share-modal');
+        if (closeShareModal) {
+            closeShareModal.addEventListener('click', () => this.closeShareModal());
+        }
+        const shareModal = document.getElementById('share-modal');
+        if (shareModal) {
+            shareModal.addEventListener('click', (e) => {
+                if (e.target === shareModal) this.closeShareModal();
+            });
+        }
+        const genShareBtn = document.getElementById('generate-share-btn');
+        if (genShareBtn) {
+            genShareBtn.addEventListener('click', () => this.generateShareToken());
+        }
     },
 
     /**
@@ -535,6 +575,166 @@ const Board = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Permission Management
+     */
+    openPermissionModal() {
+        const modal = document.getElementById('permission-modal');
+        modal.classList.add('active');
+        this.loadPermissions();
+    },
+
+    closePermissionModal() {
+        const modal = document.getElementById('permission-modal');
+        modal.classList.remove('active');
+    },
+
+    async loadPermissions() {
+        const container = document.getElementById('permissions-list-container');
+        try {
+            const permissions = await API.permissions.getProjectPermissions(this.projectId);
+            if (permissions.length === 0) {
+                container.innerHTML = '<div class="empty-state-subtext">No users have been granted access yet.</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <ul class="permission-list">
+                    ${permissions.map(perm => `
+                        <li class="permission-item">
+                            <div class="permission-user-info">
+                                <div class="permission-username">${this.escapeHtml(perm.username)}</div>
+                                <div class="permission-email">${this.escapeHtml(perm.email)}</div>
+                            </div>
+                            <span class="permission-level permission-level-${perm.permission_level}">
+                                ${perm.permission_level}
+                            </span>
+                            <button class="btn btn-remove" onclick="Board.removePermission(${perm.user_id})">Remove</button>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state-text">Failed to load permissions: ${error.message}</div>`;
+        }
+    },
+
+    async addPermission() {
+        const userIdInput = document.getElementById('add-user-id');
+        const levelSelect = document.getElementById('add-permission-level');
+        const userId = parseInt(userIdInput.value);
+        const level = levelSelect.value;
+
+        if (!userId) {
+            alert('Please enter a valid user ID');
+            return;
+        }
+
+        try {
+            await API.permissions.addProjectPermission(this.projectId, userId, level);
+            userIdInput.value = '';
+            await this.loadPermissions();
+        } catch (error) {
+            alert('Failed to add permission: ' + error.message);
+        }
+    },
+
+    async removePermission(userId) {
+        if (!confirm('Are you sure you want to remove this user\'s access?')) {
+            return;
+        }
+
+        try {
+            await API.permissions.removeProjectPermission(this.projectId, userId);
+            await this.loadPermissions();
+        } catch (error) {
+            alert('Failed to remove permission: ' + error.message);
+        }
+    },
+
+    /**
+     * Share Management
+     */
+    openShareModal() {
+        const modal = document.getElementById('share-modal');
+        modal.classList.add('active');
+        this.loadShareTokens();
+    },
+
+    closeShareModal() {
+        const modal = document.getElementById('share-modal');
+        modal.classList.remove('active');
+    },
+
+    async loadShareTokens() {
+        const container = document.getElementById('share-tokens-container');
+        try {
+            const tokens = await API.share.getProjectTokens(this.projectId);
+            if (tokens.length === 0) {
+                container.innerHTML = '<div class="empty-state-subtext">No active share links.</div>';
+                return;
+            }
+
+            container.innerHTML = tokens.map(token => {
+                const expiresDate = new Date(token.expires_at * 1000);
+                const shareUrl = `${window.location.origin}/share?token=${token.token}`;
+                
+                return `
+                    <div class="share-token-item">
+                        <div class="share-token-info">
+                            <div class="share-token-link">${shareUrl}</div>
+                            <div class="share-token-meta">
+                                Permission: <strong>${token.permission_level}</strong> | 
+                                Expires: ${expiresDate.toLocaleString()}
+                            </div>
+                        </div>
+                        <div class="share-actions">
+                            <button class="btn btn-copy" onclick="Board.copyShareLink('${shareUrl}')">Copy</button>
+                            <button class="btn btn-remove" onclick="Board.deleteShareToken(${token.id})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state-text">Failed to load share links: ${error.message}</div>`;
+        }
+    },
+
+    async generateShareToken() {
+        const levelSelect = document.getElementById('share-permission-level');
+        const hoursInput = document.getElementById('share-expires-hours');
+        const level = levelSelect.value;
+        const hours = parseInt(hoursInput.value) || 24;
+
+        try {
+            await API.share.generateToken(this.projectId, level, hours);
+            await this.loadShareTokens();
+        } catch (error) {
+            alert('Failed to generate share link: ' + error.message);
+        }
+    },
+
+    async deleteShareToken(tokenId) {
+        if (!confirm('Are you sure you want to delete this share link?')) {
+            return;
+        }
+
+        try {
+            await API.share.deleteToken(tokenId);
+            await this.loadShareTokens();
+        } catch (error) {
+            alert('Failed to delete share link: ' + error.message);
+        }
+    },
+
+    copyShareLink(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Share link copied to clipboard!');
+        }).catch(() => {
+            alert('Failed to copy link. Please copy manually: ' + url);
+        });
     },
 };
 

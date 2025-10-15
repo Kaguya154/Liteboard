@@ -115,6 +115,9 @@ func main() {
 	r.GET("/board.html", auth.LoginRequired(), func(ctx context.Context, c *app.RequestContext) {
 		c.File("./frontend/board.html")
 	})
+	r.GET("/share", func(ctx context.Context, c *app.RequestContext) {
+		c.File("./frontend/share.html")
+	})
 	// 注册认证路由 (公开)
 	api.RegisterAuthRoutes(r)
 
