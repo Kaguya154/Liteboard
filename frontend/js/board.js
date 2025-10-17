@@ -437,6 +437,7 @@ const Board = {
                 type: 'task',
                 title: title,
                 content: content || title,
+                project_id: parseInt(this.projectId)
             };
 
             if (cardId) {
