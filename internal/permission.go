@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"sort"
 
 	"github.com/Kaguya154/dbhelper"
 	"github.com/Kaguya154/dbhelper/types"
@@ -96,8 +97,18 @@ func GetProjectsForUser(db types.Conn, userID int64) ([]Project, error) {
 		}
 	}
 
-	projects := make([]Project, 0) // 初始化为空数组而不是 nil
+	// Collect IDs into a sorted slice to ensure consistent ordering
+	sortedIDs := make([]int64, 0, len(projectIDs))
 	for id := range projectIDs {
+		sortedIDs = append(sortedIDs, id)
+	}
+	// Sort by ID in ascending order for consistent display
+	sort.Slice(sortedIDs, func(i, j int) bool {
+		return sortedIDs[i] < sortedIDs[j]
+	})
+
+	projects := make([]Project, 0) // 初始化为空数组而不是 nil
+	for _, id := range sortedIDs {
 		p, err := GetProject(db, id)
 		if err != nil {
 			hlog.Errorf("GetProjectsForUser: Failed to get project ID=%d, error=%v", id, err)
