@@ -2,7 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/dl/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Kaguya154/liteboard)](https://goreportcard.com/report/github.com/Kaguya154/liteboard)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Kaguya154/Liteboard)](https://goreportcard.com/report/github.com/Kaguya154/Liteboard)
 
 轻量级内容看板与权限管理服务。后端使用 CloudWeGo Hertz，内置 SQLite 存储，支持 GitHub OAuth 登录、会话权限校验，并提供完整的 RESTful API 与 Swagger 文档，以及简洁的前端页面（首页、仪表盘、看板与分享页）。
 
